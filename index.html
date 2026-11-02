@@ -55,8 +55,7 @@ a{color:inherit}
 #cables .lit.done{stroke-dashoffset:0}
 #cables .node{fill:var(--w);stroke:var(--wire);stroke-width:6}
 #cables .node.done{stroke:var(--or)}
-#cables .tip{fill:var(--wire)}
-#cables .tip.done{fill:var(--blue)}
+#cables .node.tip.done{stroke:var(--blue)}
 #flowCur{pointer-events:none;opacity:0;transition:opacity .25s}
 #flowCur.on{opacity:1}
 #flowCur .c-body{fill:var(--ink);stroke:var(--w);stroke-width:2.4;stroke-linejoin:round}
@@ -1078,20 +1077,20 @@ export const Enviar = {
     const ends = [];
     for (let i = 0; i < N - 1; i++) {
       const a = pos[i], b = pos[i + 1];
-      let d, s, e, ang;
+      let d, s, e;
       if (b.y === a.y) {
         const fwd = b.x > a.x, ax = fwd ? a.x + 1920 : a.x, bx = fwd ? b.x : b.x + 1920, ay = a.y + 540, by = b.y + 540, k = (bx - ax) / 2;
-        s = [ax, ay]; e = [bx, by]; ang = fwd ? 0 : 180;
+        s = [ax, ay]; e = [bx, by];
         d = `M${ax} ${ay} C${ax + k} ${ay - 160}, ${bx - k} ${by + 160}, ${bx} ${by}`;
       } else {
         const ax = a.x + 1500, ay = a.y + 1080, bx = b.x + 1500, by = b.y;
-        s = [ax, ay]; e = [bx, by]; ang = 90;
+        s = [ax, ay]; e = [bx, by];
         d = `M${ax} ${ay} C${ax + 260} ${ay + GY * .6}, ${bx - 260} ${by - GY * .6}, ${bx} ${by}`;
       }
       out += `<path class="link" d="${d}"/><path class="lit" id="lk${i}" pathLength="1" d="${d}"/>`;
-      ends.push({ s, e, ang });
+      ends.push({ s, e });
     }
-    ends.forEach((p, i) => { out += `<circle class="node" id="nd${i}" cx="${p.s[0]}" cy="${p.s[1]}" r="18"/><path class="tip" id="tp${i}" d="M0 -22 L30 0 L0 22 Z" transform="translate(${p.e[0]} ${p.e[1]}) rotate(${p.ang}) translate(-30 0)"/>`; });
+    ends.forEach((p, i) => { out += `<circle class="node" id="nd${i}" cx="${p.s[0]}" cy="${p.s[1]}" r="18"/><circle class="node tip" id="tp${i}" cx="${p.e[0]}" cy="${p.e[1]}" r="18"/>`; });
     out += `<circle id="flowRip" r="40"/><g id="flowCur"><path class="c-body" d="M6 4l34 19-15 4 9 17-7 4-9-17-11 10z"/></g>`;
     svg.innerHTML = out;
     for (let i = 0; i < N - 1; i++) links.push({ lit: $('#lk' + i), node: $('#nd' + i), tip: $('#tp' + i) });
