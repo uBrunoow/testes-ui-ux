@@ -1,0 +1,1327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testes de UI e UX</title>
+<meta name="description" content="Apresentação sobre testes de UI e de UX: definição, ferramentas, Storybook na prática e teste de usabilidade.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Hallmark · v2.0.0 · theme: custom, user named (Storybook pink, blue and white from the user's reference image) · shape: slide deck on a prototype-flow canvas · nav: presenter dock · footer: slide footer · hero: cover slide, headline left, live form right · posture: committed · copy: verbatim · gradient: pink to blue kept at the user's direction (gates 2a and 2b stay open on purpose) */
+/* Hallmark · critique · the cursor-to-check motif carries the subject; UI is pink and UX is blue on every slide; the gradient and the soft orbs are the user's pinned reference, not a default */
+/* Hallmark · waive 24b · padding and gaps at 1920 canvas scale · slide layouts are tuned by eye on a fixed 1920x1080 canvas, not a 4px web grid */
+/* Hallmark · waive 29 · frosted cards and gradient orbs · the user's reference image is built on frosted white cards and soft pink-blue glows */
+/* Hallmark · waive 26b · no disabled controls in the deck · every control in the presenter dock is always available, so there is no disabled state to style */
+/* Hallmark · dismissed 40 · white check on green · the check is an icon, measured against the 3:1 non-text threshold, which it meets */
+/* Hallmark · waive 38iii · muted question after the test name on slide 13 · the name and its question are two parts of one label, not an accent word */
+/* Hallmark · waive 3 · three step cards on the usability slide · the content is a real three-step method */
+/* Hallmark · dismissed 58 · word count across nineteen slides · a deck is many screens; each slide holds one idea */
+/* ═════════════════════════ Tokens ═════════════════════════
+   Linguagem visual: superfícies cinza-claro e brancas, cartões flutuantes, pílulas pretas
+   e um gradiente rosa (Storybook) → lilás → azul. UI é rosa, UX é azul.
+   O motivo é cursor → verificação: um cursor simula o usuário (teste de UI),
+   um observador acompanha a pessoa (teste de UX) e os resultados acendem como num test runner. */
+:root{
+  --wall:#e4e4e9; --white:#f4f4f7; --ink:#141418; --ink-2:#232329; --night:#141418; --night-card:#1e1e24; --night-well:#2a2a31; --paper:#f4f4f7;
+  --mut:#686874; --mut-dk:#a8a8b3; --line:rgba(20,20,40,.09);
+  --or:#ff4785; --or-2:#ff7eb0; --or-txt:#d0175f; --or-soft:#ffe3ee; --or-wash:rgba(255,71,133,.13);
+  --blue:#1ea7fd; --blue-2:#74c8ff; --blue-txt:#0a6cb5; --blue-soft:#dff1ff; --lilac:#b57cf0;
+  --grad:linear-gradient(120deg,#ff4785 0%,#c770e0 52%,#1ea7fd 100%);
+  --grad-ui:linear-gradient(140deg,#ff8db8,#ff4785); --grad-ux:linear-gradient(140deg,#82cdff,#1ea7fd);
+  --green:#16a34a; --green-txt:#157a3c; --green-soft:#dcf5e4; --red-txt:#c02626; --red-soft:#fde4e4;
+  --well-lt:#eeeef2; --codebg:#f6f6f9; --codefg:#1d1d24; --wire:#c8c8d2; --wire-dk:#4a4a55; --pin:#b4b4c0; --faint:#8d8d98;
+  --shadow-warm:rgba(30,30,70,.22); --shadow-card:rgba(30,30,80,.2);
+  --ease:cubic-bezier(.2,.7,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  --w:#fefeff; --black:#08080a; --ui-ink:#3a3b40; --ui-mut:#a2a3a8; --on-dark:#d4d4dd; --code-num:#9a5b00; --red-wash:#fff5f5; --well-2:#dcdce3; --lilac-2:#d58cff;
+  --sans:'Poppins',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:clip;background:var(--wall);font-family:var(--sans);-webkit-font-smoothing:antialiased;color:var(--ink)}
+::selection{background:var(--or-soft);color:var(--ink)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit}
+
+/* ═════════════════════════ Parede + câmera ═════════════════════════ */
+#wall{position:absolute;left:0;top:0;transform-origin:0 0}
+#wall.flying{will-change:transform}
+/* fluxo de protótipo: frames ligados por conectores, como no Figma/Storybook */
+#cables{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+#cables .link{fill:none;stroke:var(--wire);stroke-width:6;stroke-linecap:round}
+#cables .lit{fill:none;stroke:url(#flowGrad);stroke-width:10;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1}
+#cables .lit.done{stroke-dashoffset:0}
+#cables .node{fill:var(--w);stroke:var(--wire);stroke-width:6}
+#cables .node.done{stroke:var(--or)}
+#cables .tip{fill:var(--wire)}
+#cables .tip.done{fill:var(--blue)}
+#flowCur{pointer-events:none;opacity:0;transition:opacity .25s}
+#flowCur.on{opacity:1}
+#flowCur .c-body{fill:var(--ink);stroke:var(--w);stroke-width:2.4;stroke-linejoin:round}
+#flowRip{fill:none;stroke:var(--or);stroke-width:6;opacity:0}
+.frame{position:absolute;width:1920px;height:1080px;border-radius:36px;overflow:hidden;
+  box-shadow:0 1px 0 color-mix(in srgb,var(--w) 90%,transparent) inset,0 2px 6px color-mix(in srgb,var(--ink) 5%,transparent),0 40px 90px -40px var(--shadow-warm)}
+html.bleed .frame{border-radius:0}
+body.ov .frame{cursor:pointer;transition:box-shadow .3s}
+body.ov .frame:hover{box-shadow:0 0 0 10px var(--or),0 40px 90px -40px var(--shadow-warm)}
+body.ov .frame.cur{box-shadow:0 0 0 10px var(--ink)}
+
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--fg);contain:paint}
+.lt{--bg:var(--white);--fg:var(--ink);--mut:var(--mut);--line:color-mix(in srgb,var(--ink) 10%,transparent);--dot:color-mix(in srgb,var(--ink) 7.5%,transparent);--card:var(--w);--well:var(--well-lt);--acc:var(--or-txt)}
+.dk{--bg:var(--night);--fg:var(--paper);--mut:var(--mut-dk);--line:color-mix(in srgb,var(--w) 12%,transparent);--dot:color-mix(in srgb,var(--w) 6%,transparent);--card:var(--night-card);--well:var(--night-well);--acc:var(--or-2)}
+/* pontos de protoboard */
+.slide::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--dot) 1.6px,transparent 1.9px);background-size:40px 40px;background-position:20px 20px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 40%,var(--black) 40%,transparent 100%);mask-image:radial-gradient(120% 90% at 50% 40%,var(--black) 40%,transparent 100%)}
+.slide>*{z-index:1}
+
+/* cabeçalho e rodapé */
+.hdr{position:absolute;left:72px;right:72px;top:46px;display:flex;justify-content:space-between;align-items:center;font:500 26px var(--sans);z-index:4}
+.hdr .logo{display:flex;align-items:center;gap:14px}
+.hdr .logo svg{width:44px;height:36px}
+.hdr .yr{color:var(--mut);font-weight:400}
+.ftr{position:absolute;left:72px;right:72px;bottom:42px;display:grid;grid-template-columns:1.1fr 1fr 1fr auto;font:400 23px var(--sans);color:var(--mut);z-index:4}
+.ftr .pg{font:500 23px var(--mono);color:var(--fg);font-variant-numeric:tabular-nums}
+
+/* orbes de gradiente (o brilho rosa→azul da identidade) */
+.orb{position:absolute;border-radius:50%;pointer-events:none;z-index:0;filter:blur(70px);opacity:.55;
+  background:radial-gradient(circle at 35% 35%,var(--or-2),color-mix(in srgb,var(--lilac) 80%,transparent) 45%,color-mix(in srgb,var(--blue) 65%,transparent) 75%,transparent 80%)}
+.orb.b{background:radial-gradient(circle at 60% 40%,var(--blue-2),color-mix(in srgb,var(--blue) 70%,transparent) 45%,color-mix(in srgb,var(--lilac) 45%,transparent) 72%,transparent 80%)}
+@keyframes drift{50%{transform:translate(30px,-24px) scale(1.06)}}
+.enter .orb{animation:fade 1.4s ease both,drift 9s ease-in-out 1.4s infinite}
+.cable{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;overflow:visible;z-index:0}
+.cable .glow{filter:blur(30px)}
+
+/* tipografia */
+.title{font:500 84px/1.08 var(--sans);letter-spacing:-.035em;text-wrap:balance}
+.title.md{font-size:76px}
+.lead{font:400 34px/1.4 var(--sans);color:var(--mut);letter-spacing:-.005em;text-wrap:pretty}
+.lead b{color:var(--fg);font-weight:600}
+.mono{font-family:var(--mono)}
+.ln{display:block;overflow:hidden;padding-bottom:.14em;margin-bottom:-.14em}
+.ln>.lw{display:block}
+
+/* ═════════════ Peças ═════════════ */
+.ic{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.well{flex:none;width:76px;height:76px;border-radius:50%;background:var(--well);display:grid;place-items:center;color:var(--fg);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--w) 70%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--black) 4%,transparent)}
+.dk .well{box-shadow:inset 0 1px 0 color-mix(in srgb,var(--w) 6%,transparent)}
+.well .ic{width:34px;height:34px}
+.well.sm{width:60px;height:60px}.well.sm .ic{width:26px;height:26px}
+.well.hot{background:var(--grad-ui);color:var(--ink)}
+.well.ux{background:var(--grad-ux);color:var(--ink)}
+.well.ok{background:var(--green-soft);color:var(--green-txt)}
+.well.no{background:var(--red-soft);color:var(--red-txt)}
+.card{position:relative;background:var(--card);border-radius:30px;box-shadow:0 1px 0 color-mix(in srgb,var(--w) 90%,transparent) inset,0 2px 6px color-mix(in srgb,var(--ink) 4%,transparent),0 30px 60px -32px var(--shadow-card)}
+.glass{background:color-mix(in srgb,var(--w) 70%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);border:1px solid color-mix(in srgb,var(--w) 95%,transparent)}
+.dk .card{box-shadow:0 0 0 1px color-mix(in srgb,var(--w) 8%,transparent),0 30px 60px -30px color-mix(in srgb,var(--black) 60%,transparent)}
+.hot-card{background:var(--grad);color:var(--ink)}
+.ink-card{background:var(--ink);color:var(--paper)}
+.pill{position:absolute;display:flex;align-items:center;gap:18px;padding:0 30px;border-radius:999px}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--green);flex:none}
+.dot.or{background:var(--or)}.dot.ux{background:var(--blue)}
+
+/* fios */
+.wires{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;overflow:visible;z-index:1}
+.wires .w{fill:none;stroke:var(--wire);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.wires .w.o{stroke:var(--or)}
+.wires .w.b{stroke:var(--blue)}
+.wires .w.d{stroke-dasharray:2 12}
+.dk .wires .w{stroke:var(--wire-dk)}.dk .wires .w.o{stroke:var(--or)}
+.wires .w.b{stroke:var(--blue)}
+.wires .pin{fill:var(--bg);stroke:var(--pin);stroke-width:3}
+
+/* cursor do "usuário" (o motivo da apresentação) */
+.cursor{position:absolute;width:46px;height:56px;z-index:6;pointer-events:none;filter:drop-shadow(0 8px 14px color-mix(in srgb,var(--ink) 28%,transparent))}
+.cursor svg{display:block;width:100%;height:100%;overflow:visible;transform-origin:8px 6px}
+.cursor .c-body{fill:var(--ink);stroke:var(--w);stroke-width:2.4;stroke-linejoin:round}
+.rip{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:3px solid var(--or);opacity:0;pointer-events:none;z-index:5}
+
+/* verificação (✓) desenhada */
+.chk{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--green);color:var(--w);flex:none}
+.chk svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.chk.sm{width:34px;height:34px}.chk.sm svg{width:18px;height:18px}
+.chk.no{background:var(--red-txt)}
+
+/* ═════════════ Código ═════════════ */
+.code{position:relative;background:var(--codebg);color:var(--codefg);border-radius:28px;overflow:hidden;border:1px solid color-mix(in srgb,var(--ink) 7%,transparent);
+  --lh:48px;--fs:28px;--pad:24px}
+.code .bar{height:64px;display:flex;align-items:center;gap:14px;padding:0 26px;border-bottom:1px solid color-mix(in srgb,var(--ink) 7%,transparent);font:400 23px var(--mono);color:var(--mut)}
+.code .bar .fi{width:34px;height:34px;border-radius:50%;background:var(--w);display:grid;place-items:center;color:var(--ink)}
+.code .bar .fi .ic{width:18px;height:18px}
+.code .bar .sig{margin-left:auto;display:flex;align-items:center;gap:10px;font:500 22px var(--sans);color:var(--ink)}
+.code pre{position:relative;z-index:1;margin:0;padding:var(--pad) 30px;font:400 var(--fs)/var(--lh) var(--mono);white-space:pre}
+.code .hl{position:absolute;left:12px;right:12px;z-index:0;border-radius:10px;top:calc(64px + var(--pad) + (var(--l) - 1)*var(--lh));height:calc(var(--c,1)*var(--lh));background:var(--or-wash);opacity:0;transition:opacity .4s}
+.code .hl.now{opacity:1}
+.code .k{color:var(--or-txt)}.code .t{color:var(--blue-txt)}.code .s{color:var(--green-txt)}.code .n{color:var(--code-num)}.code .c{color:var(--faint);font-style:italic}
+
+/* ═════════════ Entradas ═════════════ */
+@keyframes rise{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+@keyframes fromR{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:none}}
+@keyframes fromL{from{opacity:0;transform:translateX(-80px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
+@keyframes lineup{from{transform:translateY(108%)}to{transform:none}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes type{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes cursorIn{0%{opacity:0;transform:translate(var(--fx,380px),var(--fy,260px))}18%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes click{0%,100%{transform:none}45%{transform:scale(.82)}}
+@keyframes press{0%,100%{transform:none}45%{transform:scale(.95)}}
+@keyframes ripple{0%{opacity:.8;transform:scale(.2)}100%{opacity:0;transform:scale(1.5)}}
+@keyframes stamp{0%{opacity:0;transform:scale(.4) rotate(-12deg)}60%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:none}}
+@keyframes lit{from{background:var(--well)}to{background:var(--or)}}
+@keyframes scan{0%{transform:translateY(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(var(--sy,300px));opacity:0}}
+@keyframes blink{50%{opacity:0}}
+
+.enter .a{animation:rise .9s var(--ease) both;animation-delay:calc(var(--b,0ms) + 220ms + var(--i,0)*90ms)}
+.enter .a.fr{animation-name:fromR}.enter .a.fl{animation-name:fromL}.enter .a.pp{animation-name:pop}.enter .a.fd{animation-name:fade}
+.enter .ln>.lw{animation:lineup 1s var(--ease) both;animation-delay:calc(var(--b,0ms) + var(--j,0)*100ms)}
+.draw{stroke-dasharray:1;stroke-dashoffset:0}
+.enter .draw{animation:draw 1.2s var(--ease) both;animation-delay:calc(var(--b,0ms) + 450ms + var(--i,0)*140ms)}
+.enter .cable .draw{animation-duration:1.8s;animation-delay:calc(var(--b,0ms) + 100ms)}
+/* atraso explícito (ms após a chegada): --t */
+.enter .at{animation-delay:calc(var(--b,0ms) + var(--t,0ms))!important}
+
+/* revelação por passos (→) */
+.js .st{opacity:0;transform:translateY(20px);transition:opacity .5s var(--ease),transform .6s var(--ease)}
+.js .st.on{opacity:1;transform:none}
+.code .hl.st{transform:none}
+
+/* ═════════════ 01 · Capa ═════════════ */
+#s1 .giant{position:absolute;left:112px;top:190px;font:500 176px/1.02 var(--sans);letter-spacing:-.05em;white-space:nowrap}
+#s1 .giant .ln{padding-bottom:.08em;margin-bottom:-.04em}
+#s1 .giant .ln:last-child>.lw{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.05em}
+#s1 .sub1{position:absolute;left:120px;top:604px;width:820px;font:500 42px/1.2 var(--sans);letter-spacing:-.025em;text-wrap:balance}
+#s1 .acts{position:absolute;left:120px;top:800px;display:flex;align-items:center;gap:30px}
+.btn{display:inline-flex;align-items:center;gap:16px;height:80px;padding:0 14px 0 38px;border-radius:999px;background:var(--ink);color:var(--w);font:500 30px var(--sans);text-decoration:none;transition:transform .3s var(--ease)}
+@media (hover:hover){.btn:hover{transform:translateY(-3px)}}
+.btn:active{transform:scale(.96);transition-duration:.15s}
+#dock button:active,.edge:active span{transform:scale(.96)}
+.btn:focus-visible{outline:3px solid var(--or);outline-offset:4px}
+.btn span{width:56px;height:56px;border-radius:50%;background:var(--grad);display:grid;place-items:center;color:var(--w)}
+#s1 .by{font:500 30px var(--sans);color:var(--mut)}
+/* formulário de demonstração */
+.form{position:absolute;padding:40px 44px;border-radius:34px}
+.form h2{font:600 38px var(--sans);letter-spacing:-.03em;margin-bottom:26px}
+.fld{margin-bottom:22px}
+.fld label{display:block;font:500 22px var(--sans);color:var(--mut);margin-bottom:10px}
+.fld .in{height:68px;border-radius:18px;background:var(--well-lt);border:2px solid transparent;display:flex;align-items:center;padding:0 22px;font:400 26px var(--mono);color:var(--ink)}
+.fld .in.err{border-color:var(--red-txt);background:var(--red-wash)}
+.typ{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;width:calc(var(--n)*1ch)}
+.enter .typ{animation:type .8s steps(var(--n),end) both;animation-delay:calc(var(--b,0ms) + var(--t,0ms))}
+.caret{display:inline-block;width:2px;height:30px;background:var(--or);margin-left:2px;opacity:0}
+.fbtn{position:relative;height:76px;border-radius:999px;display:grid;place-items:center;font:600 28px var(--sans)}
+.fbtn.go{background:var(--ink);color:var(--w)}
+.fbtn .b1,.fbtn .b2{grid-area:1/1;display:flex;align-items:center;gap:12px}
+#s1 .form{left:1090px;top:176px;width:600px}
+#s1 .fbtn{margin-top:12px}
+#s1 .fbtn .b1{opacity:0}
+.enter #s1-btn .b1,#s1.enter .fbtn .b1{animation:fadeOut .25s ease both;animation-delay:calc(var(--b,0ms) + 3250ms)}
+#s1 .fbtn .b2 .chk{width:36px;height:36px}#s1 .fbtn .b2 .chk svg{width:20px;height:20px}
+#s1.enter .fbtn .b1{animation-name:fadeOut;opacity:1}
+#s1.enter .fbtn .b2{animation:fade .35s ease both;animation-delay:calc(var(--b,0ms) + 3350ms)}
+#s1.enter .fbtn{animation:press .35s var(--ease) both;animation-delay:calc(var(--b,0ms) + 3150ms)}
+#s1 .cursor{left:1496px;top:592px}
+#s1.enter .cursor{animation:cursorIn 1.1s var(--ease-out) both;animation-delay:calc(var(--b,0ms) + 1950ms)}
+#s1.enter .cursor svg{animation:click .3s ease both;animation-delay:calc(var(--b,0ms) + 3100ms)}
+#s1 .rip{left:1500px;top:600px}
+#s1.enter .rip{animation:ripple .7s var(--ease-out) both;animation-delay:calc(var(--b,0ms) + 3150ms)}
+#s1 .res{height:96px;font:500 28px var(--sans);gap:16px;padding:0 34px 0 22px}
+#s1 .res small{font:400 22px var(--sans);color:var(--mut)}
+#s1 .r-ui{left:1090px;top:812px;background:var(--ink);color:var(--w)}
+#s1 .r-ui small{color:var(--mut-dk)}
+#s1 .r-ux{left:1440px;top:812px}
+#s1 .eye{position:absolute;left:1740px;top:196px;width:120px;height:120px;border-radius:50%;display:grid;place-items:center}
+#s1 .eye .ic{width:46px;height:46px}
+#s1 .eye small{position:absolute;top:132px;left:50%;transform:translateX(-50%);font:500 22px var(--sans);color:var(--mut);white-space:nowrap}
+
+
+/* ═════════════ Divisores (escuros) ═════════════ */
+.div .num{position:absolute;right:60px;top:130px;font:600 600px/1 var(--sans);letter-spacing:-.06em;color:transparent;-webkit-text-stroke:3px color-mix(in srgb,var(--or-2) 60%,transparent);z-index:1}
+#s12 .num,#s16 .num{-webkit-text-stroke-color:color-mix(in srgb,var(--blue-2) 60%,transparent)}
+.div .part{position:absolute;left:120px;top:250px;display:flex;align-items:center;gap:16px;font:500 28px var(--mono);color:var(--on-dark);text-shadow:0 2px 12px color-mix(in srgb,var(--ink) 60%,transparent)}
+.div .part .bar{display:flex;gap:8px}
+.div .part .bar i{width:46px;height:8px;border-radius:8px;background:var(--night-well)}
+.div .part .bar i.on{background:var(--grad)}
+.div h1{position:absolute;left:114px;top:320px;width:1200px;font:500 140px/1.04 var(--sans);letter-spacing:-.045em;text-wrap:balance}
+.div .sub{position:absolute;left:120px;top:690px;width:1150px;font:400 36px/1.4 var(--sans);color:var(--on-dark);text-shadow:0 2px 14px color-mix(in srgb,var(--ink) 70%,transparent)}
+.div .who{position:absolute;left:120px;top:812px;display:flex;align-items:center;gap:20px;height:96px;padding:0 36px 0 14px;border-radius:999px;background:var(--night-card);box-shadow:0 0 0 1px color-mix(in srgb,var(--w) 8%,transparent);font:500 32px var(--sans)}
+.div .who b{width:70px;height:70px;border-radius:50%;background:var(--grad);display:grid;place-items:center;color:var(--w);font:600 32px var(--sans)}
+.div .who small{color:var(--mut);font:400 28px var(--sans)}
+
+/* ═════════════ 04 · Bug ou design ═════════════ */
+#s4 .l{position:absolute;left:120px;top:160px;width:780px}
+#s4 .l .lead{margin-top:40px;width:700px}
+#s4 .notes{margin-top:44px;display:flex;flex-direction:column;gap:18px}
+#s4 .nt{display:flex;align-items:center;gap:20px;padding:20px 30px 20px 20px;border-radius:999px;font:400 29px/1.3 var(--sans)}
+#s4 .nt b{font-weight:600}
+#s4 .nt .tag{flex:none;height:52px;min-width:72px;padding:0 16px;border-radius:999px;display:grid;place-items:center;font:600 24px var(--sans)}
+#s4 .nt.ui .tag{background:var(--or);color:var(--ink)}
+#s4 .nt.ux .tag{background:var(--blue);color:var(--ink)}
+#s4 .form{left:1080px;top:170px;width:660px}
+#s4 .acts2{display:flex;gap:18px;margin-top:30px}
+#s4 .fbtn{flex:1}
+#s4 .fbtn.ghost{background:var(--well-lt);color:var(--ink)}
+#s4 .fbtn.bad{background:var(--ink);color:var(--w);transform:translate(14px,12px) rotate(2.5deg)}
+#s4 .msg{display:flex;align-items:center;gap:10px;margin-top:12px;font:500 23px var(--sans);color:var(--red-txt)}
+#s4 .msg .ic{width:24px;height:24px}
+#s4 .ring{position:absolute;border-radius:999px;border:4px dashed var(--or);pointer-events:none;z-index:5}
+#s4 .ring.ux{border-color:var(--blue)}
+#s4 .ring .lbl{position:absolute;left:100%;top:50%;margin-left:26px;transform:translateY(-50%);white-space:nowrap;height:52px;padding:0 20px;border-radius:999px;display:grid;place-items:center;font:600 24px var(--sans);background:var(--or);color:var(--ink)}
+#s4 .ring.ux .lbl{background:var(--blue);color:var(--ink)}
+
+/* ═════════════ 05 · Duas perguntas ═════════════ */
+#s5 h1{position:absolute;left:120px;top:150px}
+#s5 .q{position:absolute;top:330px;width:820px;height:600px;padding:44px 48px;border-radius:36px;display:flex;flex-direction:column}
+#s5 .q.ui{left:120px;background:var(--grad-ui)}
+#s5 .q.ux{left:980px;background:var(--grad-ux);color:var(--ink)}
+#s5 .q .top{display:flex;align-items:center;gap:20px;font:500 32px var(--sans)}
+#s5 .q.ui .well{background:color-mix(in srgb,var(--w) 40%,transparent);color:var(--ink)}
+#s5 .q.ux .well{background:color-mix(in srgb,var(--w) 45%,transparent);color:var(--ink)}
+#s5 .q h2{margin-top:52px;font:500 92px/1 var(--sans);letter-spacing:-.05em}
+#s5 .q p{margin-top:auto;font:400 30px/1.38 var(--sans)}
+
+#s5 .q cite{display:inline-block;margin-top:16px;font:500 22px var(--mono);font-style:normal;padding:6px 14px;border-radius:999px;background:var(--ink);color:var(--w)}
+#s5 .q .vis{position:absolute;right:48px;top:44px;display:flex;gap:10px}
+#s5 .q.ui .vis .chk{background:var(--ink);color:var(--or-2)}
+
+/* ═════════════ 06 · Tabela ═════════════ */
+#s6 h1{position:absolute;left:120px;top:150px}
+#s6 .tbl{position:absolute;left:120px;top:310px;width:1680px;display:flex;flex-direction:column;gap:14px}
+#s6 .tr{display:grid;grid-template-columns:300px minmax(0,1fr) minmax(0,1fr);align-items:center;gap:24px;padding:0 34px;min-height:96px;border-radius:26px}
+#s6 .tr.th{min-height:72px;background:none;box-shadow:none}
+#s6 .tr.th span{display:flex;align-items:center;gap:14px;font:600 30px var(--sans)}
+#s6 .tr.th .tag{width:20px;height:20px;border-radius:6px;background:var(--or)}
+#s6 .tr.th .tag.ux{background:var(--blue)}
+#s6 .tr .k{font:500 26px var(--sans);color:var(--mut)}
+#s6 .tr .v{font:400 29px/1.3 var(--sans)}
+#s6 .tr.auto{outline:3px solid var(--lilac)}
+#s6 .meter{display:flex;align-items:center;gap:18px}
+#s6 .meter .m{flex:none;width:150px;height:16px;border-radius:16px;background:var(--well-lt);overflow:hidden}
+#s6 .meter .m b{display:block;height:100%;border-radius:16px;background:var(--or);transform-origin:left}
+#s6 .meter .m.ux b{background:var(--blue)}
+#s6.enter .meter .m b{animation:grow 1.2s var(--ease) both;animation-delay:calc(var(--b,0ms) + 1200ms)}
+
+/* ═════════════ 07 · Problemas ═════════════ */
+#s7 h1{position:absolute;left:120px;top:150px}
+#s7 .colx{position:absolute;top:310px;width:820px;height:650px;padding:36px 40px;border-radius:34px}
+#s7 .pro{left:120px}#s7 .con{left:980px}
+#s7 h2{display:flex;align-items:center;gap:18px;font:500 42px var(--sans);letter-spacing:-.03em;margin-bottom:20px}
+#s7 li{list-style:none;display:flex;gap:22px;align-items:flex-start;padding:28px 0;border-top:1px solid var(--line);font:400 28px/1.38 var(--sans);color:var(--mut)}
+#s7 li b{display:block;color:var(--fg);font:600 32px/1.2 var(--sans);letter-spacing:-.02em;margin-bottom:4px}
+#s7 li .well{width:60px;height:60px}#s7 li .well .ic{width:26px;height:26px}
+
+/* ═════════════ 09 · Caixa preta ═════════════ */
+#s9 .l{position:absolute;left:120px;top:150px;width:760px}
+#s9 .l .lead{margin-top:34px}
+#s9 .two{margin-top:40px;display:flex;flex-direction:column;gap:16px}
+#s9 .two .card{display:flex;gap:22px;align-items:flex-start;padding:24px 30px 24px 22px;border-radius:28px}
+#s9 .two h2{font:600 30px var(--sans);letter-spacing:-.02em}
+#s9 .two p{margin-top:4px;font:400 25px/1.35 var(--sans);color:var(--mut)}
+#s9 .box{position:absolute;left:1260px;top:200px;width:380px;height:380px;border-radius:44px;background:var(--ink);color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:500 34px var(--sans);
+  box-shadow:0 50px 90px -40px color-mix(in srgb,var(--ink) 60%,transparent),inset 0 1px 0 color-mix(in srgb,var(--w) 8%,transparent)}
+#s9 .box .well{background:var(--night-well);color:var(--or-2);width:96px;height:96px}
+#s9 .box .well .ic{width:44px;height:44px}
+#s9 .box small{font:400 24px var(--sans);color:var(--mut-dk)}
+#s9 .io{height:84px;font:500 26px var(--sans);gap:14px;padding:0 28px 0 16px}
+#s9 .io .well{width:54px;height:54px}#s9 .io .well .ic{width:24px;height:24px}
+#s9 .i1{left:860px;top:248px}
+#s9 .o1{left:1290px;top:636px}
+#s9 .gray{position:absolute;left:930px;top:774px;width:870px;display:flex;gap:22px;align-items:flex-start;padding:26px 32px 26px 24px;border-radius:30px;background:var(--well-lt);font:400 26px/1.38 var(--sans);color:var(--mut)}
+#s9 .gray b{display:block;color:var(--fg);font:600 30px var(--sans);margin-bottom:4px}
+#s9 .gray .well{background:var(--well-2);width:60px;height:60px}#s9 .gray .well .ic{width:26px;height:26px}
+
+/* ═════════════ 10 · Ferramentas ═════════════ */
+#s10 h1{position:absolute;left:120px;top:150px}
+#s10 .rows{position:absolute;left:120px;top:300px;width:1680px;display:flex;flex-direction:column;gap:26px}
+#s10 .row{display:grid;grid-template-columns:520px minmax(0,1fr);align-items:center;gap:30px;padding:30px 30px 30px 26px;border-radius:30px}
+#s10 .row .lab{display:flex;align-items:center;gap:20px;font:500 31px/1.15 var(--sans);letter-spacing:-.02em}
+#s10 .row .lab .well{width:64px;height:64px}#s10 .row .lab .well .ic{width:28px;height:28px}
+#s10 .chips{display:flex;flex-wrap:wrap;gap:14px}
+#s10 .chips span{height:64px;padding:0 28px;border-radius:999px;display:inline-flex;align-items:center;gap:12px;background:var(--well-lt);font:500 28px var(--sans)}
+#s10 .chips span.hot{background:var(--grad-ui);color:var(--ink)}
+#s10 .chips span.hot small{font:600 19px var(--sans);padding:4px 12px;border-radius:999px;background:var(--ink);color:var(--w)}
+
+/* ═════════════ 11 · Ciclo ═════════════ */
+#s11 h1{position:absolute;left:120px;top:150px}
+#s11 .rail{position:absolute;left:220px;top:426px;width:1480px;height:6px;border-radius:6px;background:var(--line)}
+#s11 .rail b{position:absolute;inset:0;border-radius:6px;background:var(--grad);transform-origin:left}
+#s11.enter .rail b{animation:grow 1.8s var(--ease) both;animation-delay:calc(var(--b,0ms) + 300ms)}
+#s11 .stages{position:absolute;left:120px;top:356px;width:1680px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
+#s11 .stg{display:flex;flex-direction:column;align-items:center;text-align:center}
+#s11 .stg .node{width:146px;height:146px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font:600 34px var(--sans);letter-spacing:-.02em;box-shadow:0 0 0 8px var(--bg),0 24px 40px -18px var(--shadow-card)}
+#s11 .stg .node small{font:500 20px var(--sans)}
+#s11 .stg.ui .node{background:var(--grad-ui);color:var(--ink)}
+#s11 .stg.ux .node{background:var(--grad-ux);color:var(--ink)}
+#s11 .stg .card{margin-top:36px;width:100%;padding:28px 30px;border-radius:30px;text-align:left;height:280px}
+#s11 .stg h2{font:500 42px var(--sans);letter-spacing:-.035em}
+#s11 .stg .tools{margin-top:12px;font:500 24px/1.4 var(--mono);color:var(--acc)}
+#s11 .stg p{margin-top:12px;font:400 26px/1.36 var(--sans);color:var(--mut)}
+#s11 .brk{position:absolute;top:290px;font:500 24px var(--sans);color:var(--mut);display:flex;align-items:center;gap:10px}
+#s11 .brk .ic{width:22px;height:22px}
+
+/* ═════════════ 13 · Storybook ═════════════ */
+#s13 .l{position:absolute;left:120px;top:150px;width:760px}
+#s13 .l .lead{margin-top:34px}
+#s13 .sbt{margin-top:40px;display:inline-flex;align-items:center;gap:16px;height:76px;padding:0 30px 0 14px;border-radius:999px;background:var(--ink);color:var(--w);font:500 28px var(--sans)}
+#s13 .sbt .well{width:52px;height:52px;background:var(--or);color:var(--ink)}#s13 .sbt .well .ic{width:24px;height:24px}
+#s13 .tests{position:absolute;left:960px;top:170px;width:840px;display:flex;flex-direction:column;gap:22px}
+#s13 .t{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:24px;align-items:center;padding:30px 32px 30px 26px;border-radius:30px}
+#s13 .t h2{font:500 38px/1.1 var(--sans);letter-spacing:-.03em}
+#s13 .t h2 span{color:var(--mut)}
+#s13 .t p{margin-top:8px;font:400 25px/1.36 var(--sans);color:var(--mut)}
+#s13 .t p code{font:500 .92em var(--mono);color:var(--fg)}
+#s13 .t .pass{display:flex;align-items:center;gap:10px;font:600 22px var(--sans);color:var(--green-txt)}
+#s13.enter .t .pass{animation:stamp .6s var(--ease-out) both}
+#s13.enter .t:nth-child(1) .pass{animation-delay:calc(var(--b,0ms) + 1300ms)}
+#s13.enter .t:nth-child(2) .pass{animation-delay:calc(var(--b,0ms) + 1600ms)}
+#s13.enter .t:nth-child(3) .pass{animation-delay:calc(var(--b,0ms) + 1900ms)}
+#s13 .runner{position:absolute;left:960px;top:832px;width:840px;height:80px;border-radius:999px;background:var(--ink);color:var(--w);display:flex;align-items:center;gap:16px;padding:0 30px;font:500 25px var(--mono)}
+#s13 .runner .ok{color:var(--green)}
+
+/* ═════════════ 14 · Código do teste ═════════════ */
+#s14 h1{position:absolute;left:120px;top:150px;font-size:80px}
+#s14 .code{position:absolute;left:120px;top:300px;width:1060px;--fs:26px;--lh:46px;--pad:22px}
+#s14 .pv{position:absolute;left:1240px;top:300px;width:560px;height:420px;border-radius:30px;overflow:hidden}
+#s14 .pv .bar{height:64px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line);font:400 22px var(--mono);color:var(--mut)}
+#s14 .pv .bar .ic{width:20px;height:20px}
+#s14 .pv .stage{position:absolute;left:0;right:0;top:64px;bottom:0;display:grid;place-items:center}
+#s14 .clk{position:absolute;inset:0}
+#s14 .pv .fbtn{width:260px;background:var(--ink);color:var(--w)}
+#s14 .pv .toast{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;height:64px;padding:0 28px 0 14px;border-radius:999px;background:var(--green-soft);color:var(--green-txt);font:600 26px var(--sans);white-space:nowrap}
+#s14 .pv .toast.st{transform:translate(-50%,20px)}#s14 .pv .toast.st.on{transform:translateX(-50%)}
+#s14 .pv .cursor{left:284px;top:176px;opacity:0}
+#s14 .pv .rip{left:280px;top:160px}
+#s14 .clk.on .cursor{animation:cursorIn .8s var(--ease-out) both}
+#s14 .clk.on .cursor svg{animation:click .3s ease .85s both}
+#s14 .clk.on .rip{animation:ripple .7s var(--ease-out) .9s both}
+#s14 .clk.on ~ .fbtn{animation:press .35s var(--ease) .9s both}
+#s14 .steps{position:absolute;left:1240px;top:750px;width:560px;display:flex;flex-direction:column;gap:12px}
+#s14 .steps li{list-style:none;display:flex;align-items:center;gap:18px;font:400 24px/1.3 var(--sans);color:var(--mut);transition:color .4s}
+#s14 .steps li b{flex:none;width:46px;height:46px;border-radius:50%;background:var(--well);display:grid;place-items:center;font:600 20px var(--mono);color:var(--acc);transition:background .4s,color .4s}
+#s14 .steps li.on{color:var(--fg)}
+#s14 .steps li.on b{background:var(--or);color:var(--ink)}
+#s14 .foot{position:absolute;left:120px;top:900px;font:400 26px var(--sans);color:var(--mut)}
+
+/* ═════════════ 15 · Roteiro da demo ═════════════ */
+#s15 h1{position:absolute;left:120px;top:150px}
+#s15 .term{position:absolute;left:120px;top:300px;width:1020px;border-radius:30px;background:var(--ink);color:var(--paper);overflow:hidden}
+#s15 .term .bar{height:64px;display:flex;align-items:center;gap:12px;padding:0 26px;border-bottom:1px solid color-mix(in srgb,var(--w) 8%,transparent);font:400 22px var(--mono);color:var(--mut-dk)}
+#s15 .term .bar .ic{width:20px;height:20px}
+#s15 .term ol{padding:16px 0}
+#s15 .term li{list-style:none;display:grid;grid-template-columns:56px 90px minmax(0,1fr);align-items:center;gap:8px;padding:18px 34px;font:400 25px/1.35 var(--sans);color:var(--mut-dk)}
+#s15 .term li .n{font:500 24px var(--mono);color:var(--or-2)}
+#s15 .term li b{display:block;font:600 32px var(--sans);color:var(--paper);letter-spacing:-.02em}
+#s15 .term li .s{width:34px;height:34px;border-radius:50%;border:2.5px solid var(--wire-dk);display:grid;place-items:center}
+#s15 .term li .s svg{width:18px;height:18px;stroke:var(--w);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .3s}
+#s15 .term li.on .s{background:var(--green);border-color:var(--green)}
+#s15 .term li.on .s svg{opacity:1}
+#s15 .term li{opacity:.55;transition:opacity .4s}
+#s15 .term li.on{opacity:1}
+#s15 .lim{position:absolute;left:1200px;top:300px;width:600px;padding:40px 44px;border-radius:34px}
+#s15 .lim .big{font:600 168px/1 var(--sans);letter-spacing:-.06em}
+#s15 .lim p{margin-top:18px;font:400 29px/1.38 var(--sans)}
+#s15 .lim p b{font-weight:600}
+#s15 .planb{position:absolute;left:1200px;top:770px;width:600px;display:flex;gap:20px;align-items:center;padding:24px 30px 24px 22px;border-radius:30px;font:400 26px/1.35 var(--sans);color:var(--mut)}
+#s15 .planb b{color:var(--fg);font-weight:600}
+
+/* ═════════════ 17 · Usabilidade ═════════════ */
+#s17 h1{position:absolute;left:120px;top:150px}
+#s17 .cols{position:absolute;left:120px;top:310px;width:1680px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+#s17 .c{height:470px;padding:36px 38px;border-radius:34px;display:flex;flex-direction:column}
+#s17 .c .n{font:500 26px var(--mono);color:var(--acc)}
+#s17 .c h2{margin-top:14px;font:500 50px/1.04 var(--sans);letter-spacing:-.04em}
+#s17 .c p{margin-top:16px;font:400 27px/1.38 var(--sans);color:var(--mut)}
+#s17 .c .vis{margin-top:auto}
+#s17 .task{display:flex;align-items:center;gap:12px;height:68px;padding:0 22px;border-radius:999px;background:var(--well-lt);font:500 21px var(--sans);white-space:nowrap}
+#s17 .task .ic{width:24px;height:24px;color:var(--or-txt)}
+#s17 .ppl{display:flex;gap:14px}
+#s17 .ppl i{width:64px;height:64px;border-radius:50%;background:var(--well);display:grid;place-items:center;color:var(--ink)}
+#s17 .ppl i svg{width:30px;height:30px}
+#s17.enter .ppl i{animation:lit .5s ease both}
+#s17.enter .ppl i:nth-child(1){animation-delay:calc(var(--b,0ms) + 1100ms)}
+#s17.enter .ppl i:nth-child(2){animation-delay:calc(var(--b,0ms) + 1250ms)}
+#s17.enter .ppl i:nth-child(3){animation-delay:calc(var(--b,0ms) + 1400ms)}
+#s17.enter .ppl i:nth-child(4){animation-delay:calc(var(--b,0ms) + 1550ms)}
+#s17.enter .ppl i:nth-child(5){animation-delay:calc(var(--b,0ms) + 1700ms)}
+#s17 .ppl i{background:var(--or)}
+#s17 .mets{display:flex;flex-wrap:wrap;gap:10px}
+#s17 .mets span{height:52px;padding:0 20px;border-radius:999px;background:var(--ink);color:var(--w);display:inline-flex;align-items:center;font:500 22px var(--sans)}
+#s17 .tools{position:absolute;left:120px;top:830px;display:flex;align-items:center;gap:16px;font:500 26px var(--sans);color:var(--mut)}
+#s17 .tools span{height:64px;padding:0 26px;border-radius:999px;display:inline-flex;align-items:center;gap:12px;color:var(--fg)}
+#s17 .tools span small{font:400 22px var(--sans);color:var(--mut)}
+
+/* ═════════════ 18 · Para levar ═════════════ */
+#s18 h1{position:absolute;left:112px;top:200px;width:1500px;font:500 128px/1.02 var(--sans);letter-spacing:-.055em}
+#s18 h1 .ln.b>.lw{background:linear-gradient(90deg,var(--or-2),var(--lilac-2) 50%,var(--blue-2));-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.05em}
+#s18 .lead{position:absolute;left:120px;top:770px;width:1000px;color:var(--on-dark);text-shadow:0 2px 14px color-mix(in srgb,var(--ink) 70%,transparent)}
+
+/* ═════════════ 19 · Referências ═════════════ */
+#s19 h1{position:absolute;left:120px;top:150px}
+#s19 ol{position:absolute;left:120px;top:300px;width:1680px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px}
+#s19 li{list-style:none;display:flex;gap:22px;align-items:flex-start;padding:24px 30px 24px 22px;border-radius:28px;font:400 24px/1.4 var(--sans);min-height:186px}
+#s19 li .well{width:60px;height:60px}#s19 li .well .ic{width:26px;height:26px}
+#s19 li b{font-weight:600}
+#s19 li small{display:inline-block;margin-bottom:6px;font:600 18px var(--sans);padding:3px 12px;border-radius:999px;background:var(--well-lt);color:var(--mut)}
+
+/* ═════════════ 20 · Perguntas ═════════════ */
+#s20 .k2{position:absolute;left:120px;top:220px;font:500 44px var(--sans);letter-spacing:-.03em;color:var(--mut)}
+#s20 .giant{position:absolute;left:110px;top:300px;font:500 176px/1.05 var(--sans);letter-spacing:-.05em;white-space:nowrap}
+#s20 .giant.ln{padding-bottom:.06em}
+#s20 .lead{position:absolute;left:120px;top:580px;width:820px;color:var(--fg)}
+#s20 .by{position:absolute;left:120px;top:800px;display:flex;gap:12px}
+#s20 .by span{height:72px;padding:0 30px;border-radius:999px;display:grid;place-items:center;font:500 28px var(--sans)}
+#s20 .sum{position:absolute;left:1230px;top:260px;width:570px;display:flex;flex-direction:column;gap:20px}
+#s20 .sum .card{display:flex;align-items:center;gap:22px;padding:26px 30px 26px 24px;border-radius:30px}
+#s20 .sum h2{font:600 30px var(--sans);letter-spacing:-.02em}
+#s20 .sum p{margin-top:4px;font:400 24px/1.35 var(--sans);color:var(--mut)}
+#s20 .sum .chk{width:56px;height:56px}#s20 .sum .chk svg{width:28px;height:28px}
+#s20.enter .sum .chk{animation:stamp .6s var(--ease-out) both}
+#s20.enter .sum .card:nth-child(1) .chk{animation-delay:calc(var(--b,0ms) + 1100ms)}
+#s20.enter .sum .card:nth-child(2) .chk{animation-delay:calc(var(--b,0ms) + 1400ms)}
+#s20.enter .sum .card:nth-child(3) .chk{animation-delay:calc(var(--b,0ms) + 1700ms)}
+
+/* ═════════════ Interface do apresentador ═════════════ */
+#bar{position:fixed;left:0;bottom:0;height:4px;width:100%;z-index:50;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+#bar i{display:block;height:100%;width:100%;background:var(--or);transform-origin:left;transform:scaleX(0);transition:transform .8s var(--ease)}
+#dock{position:fixed;left:50%;bottom:22px;z-index:60;transform:translateX(-50%);display:flex;gap:4px;padding:6px;border-radius:999px;background:color-mix(in srgb,var(--w) 82%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent),0 20px 50px -10px var(--shadow-warm);transition:opacity .35s,transform .35s var(--ease)}
+.js.idle #dock{opacity:0;transform:translate(-50%,16px);pointer-events:none}
+.idle,.idle *{cursor:none!important}
+#dock button{position:relative;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--ui-ink);transition:background .2s,transform .15s ease-out}
+#dock button:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--black)}
+#dock button svg{width:21px;height:21px}
+#dock .sep{width:1px;margin:10px 4px;background:color-mix(in srgb,var(--ink) 12%,transparent)}
+#dock .pos{display:grid;place-items:center;min-width:80px;font:500 16px var(--mono);font-variant-numeric:tabular-nums}
+#dock button[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:58px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:7px 12px;border-radius:999px;background:var(--ink);color:var(--w);font:500 14px var(--sans)}
+#dock button:focus-visible,.edge:focus-visible,#pal input:focus-visible{outline:2px solid var(--or);outline-offset:2px}
+.edge{position:fixed;top:0;bottom:0;width:9vw;z-index:40;opacity:0;display:grid;place-items:center;color:var(--ink);transition:opacity .25s}
+.edge:hover,.edge:focus-visible{opacity:1}.edge.l{left:0}.edge.r{right:0}
+.edge span{width:56px;height:56px;border-radius:50%;background:color-mix(in srgb,var(--w) 85%,transparent);display:grid;place-items:center;box-shadow:0 10px 30px -10px color-mix(in srgb,var(--ink) 40%,transparent)}
+.edge svg{width:24px;height:24px}
+.idle .edge,body.ov .edge{display:none}
+
+#notes{position:fixed;left:16px;right:16px;bottom:16px;z-index:55;padding:24px 32px 92px;border-radius:28px;background:color-mix(in srgb,var(--ink) 94%,transparent);color:var(--paper);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);transform:translateY(120%);transition:transform .5s var(--ease);display:grid;grid-template-columns:1fr 240px;gap:40px}
+body.shownotes #notes{transform:none}
+#notes .nh{font:500 15px var(--sans);color:var(--ui-mut);margin-bottom:8px}
+#notes p{font:400 24px/1.42 var(--sans);max-width:1200px}
+#notes .nx{margin-top:10px;color:var(--ui-mut);font-size:17px}
+#notes .tm{text-align:right;font:500 50px var(--mono);font-variant-numeric:tabular-nums;color:var(--or-2)}
+#notes .tm small{display:block;font:500 15px var(--sans);color:var(--ui-mut)}
+
+#pal{position:fixed;inset:0;z-index:90;display:none;align-items:flex-start;justify-content:center;padding-top:14vh;background:color-mix(in srgb,var(--ink) 25%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#pal.open{display:flex;animation:fade .2s}
+#pal .box{width:min(720px,92vw);border-radius:26px;background:color-mix(in srgb,var(--w) 94%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent),0 40px 100px -20px color-mix(in srgb,var(--ink) 45%,transparent);overflow:hidden}
+#pal input{width:100%;padding:22px 26px;background:none;border:0;border-bottom:1px solid color-mix(in srgb,var(--ink) 8%,transparent);font:500 22px var(--sans);color:var(--ink);outline:none;caret-color:var(--or)}
+#pal ul{list-style:none;max-height:min(52vh,460px);overflow:auto;padding:8px}
+#pal li{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;border-radius:14px;font:500 18px var(--sans);color:var(--ui-ink);cursor:pointer}
+#pal li.sel{background:var(--or-soft);color:var(--ink)}
+#pal kbd,#help kbd{font:500 14px var(--mono);padding:3px 9px;border-radius:8px;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ui-ink)}
+#pal .empty{padding:24px;color:var(--mut);font:400 17px var(--sans)}
+#pal .foot2{display:flex;gap:18px;padding:12px 20px;border-top:1px solid color-mix(in srgb,var(--ink) 6%,transparent);font:400 14px var(--sans);color:var(--mut)}
+#help{position:fixed;inset:0;z-index:95;display:none;place-items:center;background:color-mix(in srgb,var(--ink) 25%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#help.open{display:grid}
+#help .box{width:min(880px,92vw);padding:34px 40px;border-radius:30px;background:var(--w);box-shadow:0 40px 100px -20px color-mix(in srgb,var(--ink) 45%,transparent)}
+#help h2{font:500 30px var(--sans);letter-spacing:-.02em;margin-bottom:22px}
+#help dl{display:grid;grid-template-columns:1fr 1fr;gap:6px 44px}
+#help dl div{display:flex;justify-content:space-between;gap:12px;font:400 17px var(--sans);color:var(--ui-ink);padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 7%,transparent)}
+#help dl div span{display:flex;gap:6px}
+#toast{position:fixed;left:50%;top:24px;z-index:99;transform:translate(-50%,-20px);opacity:0;padding:14px 24px;border-radius:999px;background:var(--ink);color:var(--w);font:500 17px var(--sans);transition:opacity .3s,transform .4s var(--ease);pointer-events:none;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#blank{position:fixed;inset:0;z-index:80;background:var(--black);display:none}
+#blank.on{display:block}
+#laser{position:fixed;z-index:70;left:0;top:0;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;pointer-events:none;display:none;background:radial-gradient(circle,var(--w) 0 18%,var(--or) 22%,color-mix(in srgb,var(--or) 45%,transparent) 55%,transparent 72%);filter:drop-shadow(0 0 10px var(--or))}
+body.laser #laser{display:block}
+body.laser,body.laser *{cursor:none!important}
+.sr{position:absolute;left:-9999px}
+
+/* ═════════════ PDF / impressão ═════════════ */
+@page{size:1920px 1080px;margin:0}
+@media print{.ui{display:none!important}}
+html.pdf,html.pdf body{background:var(--w);overflow:visible;height:auto}
+html.pdf #wall{position:static;transform:none!important;width:1920px!important;height:auto!important}
+html.pdf #cables{display:none}
+html.pdf .frame{position:relative;left:auto!important;top:auto!important;border-radius:0;box-shadow:none;break-after:page;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html.pdf .frame:last-of-type{break-after:auto;page-break-after:auto}
+html.pdf *{animation:none!important;transition:none!important}
+html.pdf .st{opacity:1!important;transform:none!important}
+html.pdf .pk,html.pdf .cursor,html.pdf .rip{display:none}
+html.pdf .ui{display:none!important}
+
+@media (prefers-reduced-motion:reduce){
+  .enter .a,.enter .ln>.lw,.enter .draw,.enter .typ,.enter .cursor,.enter .cursor svg,.enter .rip,.enter .fbtn,.enter .fbtn .b1,.enter .fbtn .b2,
+  .enter .rail b,.enter .meter .m b,.enter .pass,.enter .ppl i,.enter .chk,.clk.on .cursor,.clk.on .cursor svg,.clk.on .rip{animation:none!important}
+  #s1 .fbtn .b1{opacity:0}
+  .st{transform:none;transition:opacity .3s}
+  .pk{display:none}
+  .enter .orb{animation:fade .6s ease both!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ícones (traço) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3.5l13 7.2-5.6 1.6 3.4 6.4-2.6 1.4-3.4-6.4L5.6 17.7z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.7-3 2.8-4.6 5.5-4.6s4.8 1.6 5.5 4.6"/><circle cx="16.5" cy="9" r="2.5"/><path d="M16 14.4c2.3.1 4 1.6 4.5 4.1"/></symbol>
+  <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9h17M9 9v10.5"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4l8.5 4.5L12 13 3.5 8.5z"/><path d="M3.5 12.5L12 17l8.5-4.5M3.5 16.5L12 21l8.5-4.5"/></symbol>
+  <symbol id="i-access" viewBox="0 0 24 24"><circle cx="12" cy="4.8" r="1.8"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M12 14.5l-3.5 6M12 14.5l3.5 6"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 010 6H9a3 3 0 000 6h6.5"/></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4.5h4.5v15H14M10 8l-4 4 4 4M6 12h9"/></symbol>
+  <symbol id="i-coins" viewBox="0 0 24 24"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 15.5c.6 1.2 2.9 2 5.5 2 3 0 5.5-1.1 5.5-2.5v-4c0-1.2-1.8-2.2-4.3-2.4"/></symbol>
+  <symbol id="i-broken" viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="10" rx="5"/><path d="M11 7l2 4-2 2 2 4"/></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7.5" height="15" rx="1.5"/><rect x="13" y="4.5" width="7.5" height="15" rx="1.5"/><path d="M6 9h3M15.5 9h3M6 13h3M15.5 14h2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 018 0v2.5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 015.5 4H8M16 4h2.5A1.5 1.5 0 0120 5.5V8M20 16v2.5a1.5 1.5 0 01-1.5 1.5H16M8 20H5.5A1.5 1.5 0 014 18.5V16M8 12h8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M7 9.5l3 2.5-3 2.5M12 15h5"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4.5 5.5A1.5 1.5 0 016 4h5.5v16H6a1.5 1.5 0 01-1.5-1.5zM12.5 4H18a1.5 1.5 0 011.5 1.5v13A1.5 1.5 0 0118 20h-5.5z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M9.5 13h6M9.5 16.5h4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6 0-4 3.5-5.5 3.5-9.5 2.5 1.3 4 3.5 4 6 1-.6 1.6-1.8 1.7-3 2 1.6 3.8 4 3.8 6.5 0 3.4-2.6 6-6.5 6z"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10.5l5-3v9l-5-3z"/></symbol>
+  <symbol id="i-flow" viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="5" rx="1.5"/><rect x="13.5" y="15" width="7" height="5" rx="1.5"/><path d="M7 9v4.5a2 2 0 002 2h4.5"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><rect x="7.5" y="8" width="9" height="12" rx="4.5"/><path d="M9.5 8a2.5 2.5 0 015 0M12 12v8M4 13h3.5M16.5 13H20M5 8.5l2.5 1.5M19 8.5L16.5 10M5 18.5l2.5-1.5M19 18.5L16.5 17"/></symbol>
+  <symbol id="i-check-c" viewBox="0 0 24 24"><path d="M6 12.5l4 4L18 8"/></symbol>
+</svg>
+
+<div id="wall">
+<svg id="cables" aria-hidden="true"></svg>
+
+<!-- ═════════════ 01 · Capa ═════════════ -->
+<section class="slide lt" id="s1" data-sec="Abertura" data-who="Ruan" data-title="Testes de UI e UX"
+ data-orbs="1500 520 760;1820 980 420 b"
+ data-notes="Capa. Quem abre é o Ruan: apresenta o grupo e o tema em uma frase antes de passar aos fundamentos. A apresentação tem quatro partes: Ruan (abertura, cerca de 5 min), Pedro (classificação e ferramentas, 4 min), Bruno (Storybook ao vivo, 4 min) e Vitor (UX na prática e conclusão, 2,5 min). A animação resume a apresentação: o cursor faz o papel do usuário. O teste de UI confere se a tela respondeu como especificado; o teste de UX observa se a pessoa conseguiu usar.">
+  <h1 class="giant" aria-label="Testes de UI e UX"><span class="ln"><span class="lw" style="--j:0">Testes de</span></span><span class="ln"><span class="lw" style="--j:1">UI e UX</span></span></h1>
+  <p class="sub1 a" style="--i:2">Do pixel ao usuário: como garantir que a interface funciona e que as pessoas conseguem usá-la.</p>
+  <div class="acts a" style="--i:4"><a class="btn" href="#12" data-goto="12">Ir para a demo <span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></span></a><span class="by">Ruan, Pedro, Bruno e Vitor</span></div>
+
+  <svg class="wires" aria-hidden="true">
+    <path class="w o draw" style="--i:20" pathLength="1" d="M1270 662 V812"/>
+    <path class="w b draw" style="--i:20" pathLength="1" d="M1510 662 V780 Q1510 796 1526 796 H1600 Q1616 796 1616 812"/>
+    <path class="w d draw" style="--i:6" pathLength="1" d="M1690 256 H1740"/>
+  </svg>
+  <div class="form card glass a fr" style="--i:3" aria-hidden="true">
+    <h2>Criar conta</h2>
+    <div class="fld"><label>Nome</label><div class="in"><span class="typ" style="--n:11;--t:900ms">Ana Ribeiro</span></div></div>
+    <div class="fld"><label>Senha</label><div class="in"><span class="typ" style="--n:8;--t:1500ms">••••••••</span></div></div>
+    <div class="fbtn go"><span class="b1">Enviar</span><span class="b2"><span class="chk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>Enviado</span></div>
+  </div>
+  <div class="eye card glass a pp" style="--i:6" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><small>observando</small></div>
+  <span class="rip" aria-hidden="true"></span>
+  <div class="cursor" style="--fx:360px;--fy:300px" aria-hidden="true"><svg viewBox="0 0 46 56" aria-hidden="true"><path class="c-body" d="M6 4l34 19-15 4 9 17-7 4-9-17-11 10z"/></svg></div>
+  <div class="pill res r-ui a pp at" style="--t:3500ms"><span class="dot"></span><span>UI<br><small>a tela respondeu</small></span></div>
+  <div class="pill card res r-ux a pp at" style="--t:3700ms"><span class="dot ux"></span><span>UX<br><small>a pessoa conseguiu</small></span></div>
+</section>
+
+<!-- ═════════════ 03 · Parte 01 ═════════════ -->
+<section class="slide dk div" id="s3" data-sec="Parte 01" data-who="Ruan" data-title="Fundamentos"
+ data-cable="M-140 980 C 300 900, 700 1000, 1100 700 S 1700 200, 2080 260"
+ data-notes="Transição para o bloco do Ruan.">
+  <span class="num a fd" aria-hidden="true">01</span>
+  <p class="part a"><span class="bar"><i class="on"></i><i></i><i></i><i></i></span>Parte 01 de 04</p>
+  <h1 data-split="Fundamentos"></h1>
+  <p class="sub a" style="--i:3">Abertura, definição e os problemas que os testes evitam</p>
+  <p class="who a" style="--i:5"><b>R</b>Ruan <small>apresenta</small></p>
+</section>
+
+<!-- ═════════════ 04 · Bug ou design ═════════════ -->
+<section class="slide lt" id="s4" data-sec="Para começar" data-who="Ruan" data-title="Isso é um bug… ou um problema de design?"
+ data-notes="Gancho: pergunte à turma o que está errado no formulário antes de avançar. Respostas esperadas: o botão Enviar está torto (UI) e a mensagem não diz o que a senha precisa ter (UX). Avance uma vez para marcar a falha de UI, outra para a de UX e uma terceira para a frase final.">
+  <div class="l">
+    <h1 class="title" data-split="Isso é um bug…|ou um problema|de design?"></h1>
+    <div class="notes">
+      <p class="nt card ui st" data-step="1"><span class="tag">UI</span><span>O botão desalinhado é <b>falha de UI</b>.</span></p>
+      <p class="nt card ux st" data-step="2"><span class="tag">UX</span><span>A mensagem que não explica o erro é <b>falha de UX</b>.</span></p>
+    </div>
+    <p class="lead st" data-step="3">Os dois chegam ao usuário do mesmo jeito.</p>
+  </div>
+  <div class="form card glass a fr" style="--i:2" aria-hidden="true">
+    <h2>Criar conta</h2>
+    <div class="fld"><label>Nome</label><div class="in">Ana Ribeiro</div></div>
+    <div class="fld"><label>Senha*</label><div class="in err">abc</div>
+      <p class="msg"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>Erro: entrada inválida</p></div>
+    <div class="acts2"><div class="fbtn ghost">Cancelar</div><div class="fbtn bad">Enviar</div></div>
+  </div>
+  <span class="ring st" data-step="1" style="left:1406px;top:604px;width:330px;height:108px" aria-hidden="true"><span class="lbl">UI</span></span>
+  <span class="ring ux st" data-step="2" style="left:1104px;top:520px;width:380px;height:62px" aria-hidden="true"><span class="lbl">UX</span></span>
+</section>
+
+<!-- ═════════════ 05 · Duas perguntas ═════════════ -->
+<section class="slide lt" id="s5" data-sec="Definição" data-who="Ruan" data-title="Dois testes, duas perguntas"
+ data-notes="Definição. UI: o foco é a interface em si, se ela se comporta e aparece conforme a especificação. UX: o foco é a pessoa; a norma ISO 9241-11 define usabilidade como eficácia, eficiência e satisfação ao atingir um objetivo. Frase-resumo: UI pergunta se a tela está certa; UX pergunta se o usuário consegue fazer o que precisa.">
+  <h1 class="title" data-split="Dois testes, duas perguntas"></h1>
+  <div class="q ui a fl" style="--i:2">
+    <span class="top"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-layout"/></svg></span>Teste de UI</span>
+    <h2>A tela está certa?</h2>
+    <p>Verifica se botões, formulários, navegação e layout funcionam e aparecem como especificado.</p>
+  </div>
+  <div class="q ux a fr" style="--i:4">
+    <span class="top"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>Teste de UX ou usabilidade</span>
+    <h2>O usuário consegue usar?</h2>
+    <p>Avalia eficácia, eficiência e satisfação de pessoas reais realizando tarefas.<br><cite>ISO 9241-11</cite></p>
+  </div>
+</section>
+
+<!-- ═════════════ 06 · Lado a lado ═════════════ -->
+<section class="slide lt" id="s6" data-sec="Lado a lado" data-who="Ruan" data-title="Onde cada teste atua"
+ data-notes="Comparativo. Destaque a última linha: teste de UI se automatiza bem; teste de UX depende de observar gente real. Por isso os dois se complementam.">
+  <h1 class="title" data-split="Onde cada teste atua"></h1>
+  <div class="tbl">
+    <div class="tr th a" style="--i:1"><span></span><span><i class="tag"></i>Teste de UI</span><span><i class="tag ux"></i>Teste de UX</span></div>
+    <div class="tr card a" style="--i:2"><span class="k">Pergunta</span><span class="v">A tela funciona como especificado?</span><span class="v">As pessoas conseguem usar bem?</span></div>
+    <div class="tr card a" style="--i:3"><span class="k">Quem executa</span><span class="v">QA e devs, com scripts</span><span class="v">Usuários reais, observados</span></div>
+    <div class="tr card a" style="--i:4"><span class="k">Quando</span><span class="v">A cada mudança, no CI</span><span class="v">No protótipo e após o lançamento</span></div>
+    <div class="tr card a" style="--i:5"><span class="k">Resultado</span><span class="v">Passou ou falhou</span><span class="v">Métricas e percepções</span></div>
+    <div class="tr card auto a" style="--i:6"><span class="k">Automação</span>
+      <span class="v meter"><span class="m"><b style="width:92%"></b></span>Alta</span>
+      <span class="v meter"><span class="m ux"><b style="width:22%"></b></span>Baixa, em grande parte manual</span></div>
+  </div>
+</section>
+
+<!-- ═════════════ 07 · Problemas ═════════════ -->
+<section class="slide lt" id="s7" data-sec="Por que testar" data-who="Ruan" data-title="Problemas que cada teste evita"
+ data-notes="Problemas. Lado UI: também vale citar diferenças entre navegadores e tamanhos de tela. Lado UX: quanto mais tarde o problema é descoberto, mais caro fica corrigir. Depois deste slide, Ruan passa a palavra para o Pedro.">
+  <h1 class="title" data-split="Problemas que cada teste evita"></h1>
+  <div class="colx pro card a fl" style="--i:2">
+    <h2><span class="well sm hot"><svg class="ic" aria-hidden="true"><use href="#i-layout"/></svg></span>Teste de UI evita</h2>
+    <ul>
+      <li><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-broken"/></svg></span><span><b>Componentes quebrados</b>Botão sem ação, validação errada</span></li>
+      <li><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-diff"/></svg></span><span><b>Regressão visual</b>Um ajuste de CSS muda o layout sem ninguém ver</span></li>
+      <li><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-access"/></svg></span><span><b>Falhas de acessibilidade</b>Contraste, teclado, leitor de tela</span></li>
+    </ul>
+  </div>
+  <div class="colx con card a fr" style="--i:4">
+    <h2><span class="well sm ux"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>Teste de UX evita</h2>
+    <ul>
+      <li><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-route"/></svg></span><span><b>Fluxos confusos</b>Um checkout difícil de concluir</span></li>
+      <li><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-exit"/></svg></span><span><b>Erros e abandono</b>Usuários desistem da tarefa e do produto</span></li>
+      <li><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-coins"/></svg></span><span><b>Retrabalho caro</b>O problema só aparece depois do lançamento</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═════════════ 08 · Parte 02 ═════════════ -->
+<section class="slide dk div" id="s8" data-sec="Parte 02" data-who="Pedro" data-title="Classificação e ferramentas"
+ data-cable="M2080 980 C 1700 1000, 1300 760, 1000 560 S 300 140, -140 220"
+ data-notes="Transição para o bloco do Pedro.">
+  <span class="num a fd" aria-hidden="true">02</span>
+  <p class="part a"><span class="bar"><i class="on"></i><i class="on"></i><i></i><i></i></span>Parte 02 de 04</p>
+  <h1 data-split="Classificação|e ferramentas"></h1>
+  <p class="sub a" style="--i:3">Caixa preta ou branca, as ferramentas e onde cada uma entra</p>
+  <p class="who a" style="--i:5"><b>P</b>Pedro <small>apresenta</small></p>
+</section>
+
+<!-- ═════════════ 09 · Caixa preta ═════════════ -->
+<section class="slide lt" id="s9" data-sec="Classificação" data-who="Pedro" data-title="Caixa preta, nos dois casos"
+ data-notes="Caixa preta: o teste é feito pela interface, sem olhar a implementação. A ressalva sobre caixa cinza costuma impressionar o professor: quem escreve teste de componente conhece a estrutura, mas o que se verifica é o que o usuário vê. Avance para mostrar a ressalva.">
+  <div class="l">
+    <h1 class="title md" data-split="Caixa preta,|nos dois casos"></h1>
+    <p class="lead a">Quem testa vê só a interface e os resultados. <b>O código fica fechado.</b></p>
+    <div class="two">
+      <div class="card a fl" style="--i:3"><span class="well sm hot"><svg class="ic" aria-hidden="true"><use href="#i-layout"/></svg></span><div><h2>Teste de UI</h2><p>Entrada pela tela, verificação do que aparece nela.</p></div></div>
+      <div class="card a fl" style="--i:4"><span class="well sm ux"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span><div><h2>Teste de UX</h2><p>Caixa preta por natureza: quem testa é o usuário final.</p></div></div>
+    </div>
+  </div>
+  <svg class="wires" aria-hidden="true">
+    <path id="bw1" class="w o draw" style="--i:3" pathLength="1" d="M1180 290 H1260"/>
+    <path id="bw2" class="w o draw" style="--i:5" pathLength="1" d="M1450 580 V636"/>
+    <g class="pk" fill="#ff4785">
+      <circle r="7"><animateMotion dur="1.8s" begin="2s" repeatCount="indefinite"><mpath href="#bw1"/></animateMotion></circle>
+      <circle r="7"><animateMotion dur="1.8s" begin="2.9s" repeatCount="indefinite"><mpath href="#bw2"/></animateMotion></circle>
+    </g>
+  </svg>
+  <div class="pill card io i1 a fl" style="--i:2"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-cursor"/></svg></span>clique e digitação</div>
+  <div class="box a pp" style="--i:4"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span>código fechado<small>implementação</small></div>
+  <div class="pill card io o1 a pp" style="--i:6"><span class="well ok"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></span>o que aparece na tela</div>
+  <div class="gray st" data-step="1"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-box"/></svg></span><span><b>Ressalva: caixa cinza</b>Testes de componente escritos por devs (Storybook, Testing Library) conhecem a estrutura, mas verificam o comportamento visível.</span></div>
+</section>
+
+<!-- ═════════════ 10 · Ferramentas ═════════════ -->
+<section class="slide lt" id="s10" data-sec="Ferramentas" data-who="Pedro" data-title="O que o mercado usa"
+ data-notes="Ferramentas por categoria. O Storybook está em destaque porque será a demonstração do Bruno. Percy e Chromatic comparam capturas de tela entre versões; o axe-core verifica regras de WCAG automaticamente.">
+  <h1 class="title" data-split="O que o mercado usa"></h1>
+  <div class="rows">
+    <div class="row card a fr" style="--i:2"><span class="lab"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-cursor"/></svg></span>Automação de UI e E2E</span>
+      <span class="chips"><span>Selenium</span><span>Cypress</span><span>Playwright</span><span>Appium</span></span></div>
+    <div class="row card a fr" style="--i:3"><span class="lab"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-diff"/></svg></span>Componentes e regressão visual</span>
+      <span class="chips"><span class="hot">Storybook <small>demo</small></span><span>Chromatic</span><span>Percy</span><span>Applitools</span></span></div>
+    <div class="row card a fr" style="--i:4"><span class="lab"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-access"/></svg></span>Acessibilidade</span>
+      <span class="chips"><span>axe-core</span><span>Lighthouse</span><span>WAVE</span></span></div>
+    <div class="row card a fr" style="--i:5"><span class="lab"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>Usabilidade e UX</span>
+      <span class="chips"><span>Maze</span><span>UserTesting</span><span>Lookback</span><span>Hotjar</span></span></div>
+  </div>
+</section>
+
+<!-- ═════════════ 11 · Ciclo ═════════════ -->
+<section class="slide lt" id="s11" data-sec="No ciclo do produto" data-who="Pedro" data-title="Cada ferramenta tem sua hora"
+ data-notes="Ciclo: o teste de UX aparece nas pontas (antes de programar e depois do lançamento) e o teste de UI no meio (durante o desenvolvimento e no CI). Maze testa protótipos antes do lançamento; Hotjar registra o comportamento real depois. Pedro passa a palavra ao Bruno para a demonstração.">
+  <h1 class="title" data-split="Cada ferramenta tem sua hora"></h1>
+  <div class="rail"><b></b></div>
+  <div class="stages">
+    <div class="stg ux a pp" style="--i:3"><span class="node">UX<small>1</small></span><div class="card"><h2>Protótipo</h2><p class="tools">Maze, Lookback</p><p>Testar a ideia antes de programar</p></div></div>
+    <div class="stg ui a pp" style="--i:5"><span class="node">UI<small>2</small></span><div class="card"><h2>Desenvolvimento</h2><p class="tools">Storybook, Testing Library</p><p>Componente por componente</p></div></div>
+    <div class="stg ui a pp" style="--i:7"><span class="node">UI<small>3</small></span><div class="card"><h2>Integração</h2><p class="tools">Playwright, Chromatic, Percy, axe</p><p>A cada mudança</p></div></div>
+    <div class="stg ux a pp" style="--i:9"><span class="node">UX<small>4</small></span><div class="card"><h2>Produção</h2><p class="tools">Hotjar</p><p>Mapas de calor e gravações de uso real</p></div></div>
+  </div>
+</section>
+
+<!-- ═════════════ 12 · Parte 03 ═════════════ -->
+<section class="slide dk div" id="s12" data-sec="Parte 03" data-who="Bruno" data-title="Na prática: Storybook"
+ data-cable="M-140 300 C 400 260, 700 560, 1000 760 S 1700 1100, 2080 900"
+ data-notes="Transição para o bloco do Bruno.">
+  <span class="num a fd" aria-hidden="true">03</span>
+  <p class="part a"><span class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>Parte 03 de 04</p>
+  <h1 data-split="Na prática:|Storybook"></h1>
+  <p class="sub a" style="--i:3">Interação, acessibilidade e regressão visual</p>
+  <p class="who a" style="--i:5"><b>B</b>Bruno <small>apresenta</small></p>
+</section>
+
+<!-- ═════════════ 13 · Storybook ═════════════ -->
+<section class="slide lt" id="s13" data-sec="Storybook" data-who="Bruno" data-title="Cada story é também um teste"
+ data-notes="O que é o Storybook. Ponto principal: as stories que o time já escreve para documentar componentes viram testes. Os três tipos respondem a três perguntas: funciona, todos conseguem usar, a aparência continua certa. O Chromatic é feito pela mesma equipe do Storybook.">
+  <div class="l">
+    <h1 class="title md" data-split="Cada story|é também|um teste"></h1>
+    <p class="lead a">Ambiente para desenvolver componentes isolados, em todos os seus estados. Desde a versão 9, o <b>Storybook Test</b>, integrado ao Vitest, roda três tipos de teste de componente, no navegador ou no CI.</p>
+    <p class="sbt a" style="--i:3"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg></span>Storybook Test + Vitest</p>
+  </div>
+  <div class="tests">
+    <div class="t card a fr" style="--i:2"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-cursor"/></svg></span><div><h2>Interação: <span>funciona?</span></h2><p><code>play()</code> simula cliques e digitação e confere o resultado</p></div><span class="pass"><span class="chk sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>passou</span></div>
+    <div class="t card a fr" style="--i:3"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-access"/></svg></span><div><h2>Acessibilidade: <span>todos usam?</span></h2><p>Addon a11y verifica regras de WCAG com axe-core</p></div><span class="pass"><span class="chk sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>passou</span></div>
+    <div class="t card a fr" style="--i:4"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-diff"/></svg></span><div><h2>Visual: <span>a aparência está certa?</span></h2><p>Capturas comparadas entre versões (Chromatic)</p></div><span class="pass"><span class="chk sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>passou</span></div>
+  </div>
+  <p class="runner a fd" style="--i:16"><span class="ok">✓</span> Button.stories.ts <span style="color:var(--mut-dk)">3 testes, 3 tipos</span></p>
+</section>
+
+<!-- ═════════════ 14 · Código do teste ═════════════ -->
+<section class="slide lt" id="s14" data-sec="Teste de interação" data-who="Bruno" data-title="Um clique, uma verificação"
+ data-notes="Código do teste de interação. Avance três vezes: 1) a story renderiza com os args; 2) o clique simulado, como um usuário faria; 3) a verificação do que aparece na tela. O teste usa o botão pelo papel acessível (getByRole), do jeito que um usuário ou leitor de tela o encontraria, e não pela classe CSS. Se a mensagem Enviado! não aparecer, o teste falha e o Storybook mostra o passo exato onde quebrou. Ajuste o nome do componente e o texto ao projeto usado na demo.">
+  <h1 class="title" data-split="Um clique, uma verificação"></h1>
+  <div class="code a fl" style="--i:1">
+    <div class="bar"><span class="fi"><svg class="ic" aria-hidden="true"><use href="#i-code"/></svg></span>Button.stories.ts<span class="sig"><svg class="ic" aria-hidden="true" style="width:22px;height:22px;color:var(--green-txt)"><use href="#i-check"/></svg>Vitest</span></div>
+    <span class="hl" data-step="1" style="--l:4"></span>
+    <span class="hl" data-step="2" style="--l:6;--c:2"></span>
+    <span class="hl" data-step="3" style="--l:8"></span>
+<pre data-lang="ts">import { expect } from 'storybook/test';
+
+export const Enviar = {
+  args: { label: 'Enviar' },
+  play: async ({ canvas, userEvent }) =&gt; {
+    const botao = canvas.getByRole('button');
+    await userEvent.click(botao);
+    await expect(canvas.getByText('Enviado!')).toBeVisible();
+  },
+};</pre>
+  </div>
+  <div class="pv card a fr" style="--i:3" aria-hidden="true">
+    <div class="bar"><svg class="ic" aria-hidden="true"><use href="#i-layout"/></svg>Canvas, story Enviar</div>
+    <div class="stage">
+      <div class="clk" data-step="2"><span class="rip"></span><div class="cursor" style="--fx:180px;--fy:140px"><svg viewBox="0 0 46 56" aria-hidden="true"><path class="c-body" d="M6 4l34 19-15 4 9 17-7 4-9-17-11 10z"/></svg></div></div>
+      <div class="fbtn st" data-step="1">Enviar</div>
+      <div class="toast st" data-step="3"><span class="chk sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span>Enviado!</div>
+    </div>
+  </div>
+  <ol class="steps a" style="--i:5">
+    <li data-step="1"><b>1</b>Renderiza a story com os args definidos</li>
+    <li data-step="2"><b>2</b>Simula o clique, como um usuário faria</li>
+    <li data-step="3"><b>3</b>Confere o que aparece na tela</li>
+  </ol>
+  <p class="foot a" style="--i:7">Roda no painel do Storybook ou no CI, via Vitest.</p>
+</section>
+
+<!-- ═════════════ 15 · Roteiro da demo ═════════════ -->
+<section class="slide lt" id="s15" data-sec="Demonstração ao vivo" data-who="Bruno" data-title="Roteiro da demo"
+ data-notes="Demo em quatro passos; cada avanço marca um passo como concluído. Deixe o Storybook já aberto e com o componente pronto antes de começar. No passo 3, use uma cor de texto com contraste baixo de propósito, mostre o alerta do painel de acessibilidade e corrija. Feche com o limite: a automação pega muita coisa, mas não substitui testar com pessoas reais. Isso leva ao bloco do Vitor.">
+  <h1 class="title" data-split="Roteiro da demo"></h1>
+  <div class="term a fl" style="--i:1">
+    <div class="bar"><svg class="ic" aria-hidden="true"><use href="#i-term"/></svg>storybook dev, localhost:6006</div>
+    <ol>
+      <li data-step="1"><span class="s"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><span class="n">01</span><span><b>Mostrar o Button</b>Primário, desabilitado e carregando</span></li>
+      <li data-step="2"><span class="s"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><span class="n">02</span><span><b>Rodar o play()</b>Ver o clique acontecer passo a passo</span></li>
+      <li data-step="3"><span class="s"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><span class="n">03</span><span><b>Painel a11y</b>Contraste ruim, corrigir, teste passa</span></li>
+      <li data-step="4"><span class="s"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><span class="n">04</span><span><b>Diff visual</b>Mudança de estilo detectada no Chromatic</span></li>
+    </ol>
+  </div>
+  <div class="lim hot-card a pp" style="--i:4">
+    <p class="big">57%</p>
+    <p><b>Limite: isso cobre UI.</b> O axe detecta em média até 57% dos problemas de WCAG.</p>
+  </div>
+  <div class="planb card a fr" style="--i:6"><span class="well sm"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg></span><span><b>Plano B:</b> vídeo gravado da demo, caso algo falhe ao vivo.</span></div>
+</section>
+
+<!-- ═════════════ 16 · Parte 04 ═════════════ -->
+<section class="slide dk div" id="s16" data-sec="Parte 04" data-who="Vitor" data-title="Com pessoas reais"
+ data-cable="M2080 260 C 1600 300, 1300 600, 1000 820 S 300 1100, -140 960"
+ data-notes="Transição para o bloco do Vitor.">
+  <span class="num a fd" aria-hidden="true">04</span>
+  <p class="part a"><span class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Parte 04 de 04</p>
+  <h1 data-split="Com pessoas|reais"></h1>
+  <p class="sub a" style="--i:3">Teste de UX na prática, conclusão e referências</p>
+  <p class="who a" style="--i:5"><b>V</b>Vitor <small>apresenta</small></p>
+</section>
+
+<!-- ═════════════ 17 · Usabilidade ═════════════ -->
+<section class="slide lt" id="s17" data-sec="Teste de usabilidade" data-who="Vitor" data-title="Como funciona, em três passos"
+ data-notes="Teste de usabilidade na prática. Se der tempo, mostre um print de um teste no Maze ou de um mapa de calor do Hotjar. Reforce que o observador não ajuda o usuário durante a tarefa: a dificuldade dele é o dado que interessa.">
+  <h1 class="title" data-split="Como funciona, em três passos"></h1>
+  <div class="cols">
+    <div class="c card a" style="--i:2"><span class="n">01</span><h2>Defina tarefas</h2><p>Objetivos reais, sem dar a resposta.</p>
+      <div class="vis"><span class="task"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg>“compre um ingresso para sábado”</span></div></div>
+    <div class="c card a" style="--i:3"><span class="n">02</span><h2>Observe 5 usuários</h2><p>Segundo Nielsen, cinco pessoas já revelam a maior parte dos problemas.</p>
+      <div class="vis ppl" aria-hidden="true"><i><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></i><i><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></i><i><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></i><i><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></i><i><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></i></div></div>
+    <div class="c card a" style="--i:4"><span class="n">03</span><h2>Meça</h2><p>Quatro sinais dizem se a tarefa deu certo.</p>
+      <div class="vis mets"><span>Taxa de sucesso</span><span>Tempo por tarefa</span><span>Erros</span><span>Satisfação</span></div></div>
+  </div>
+  <p class="tools a" style="--i:6">Ferramentas
+    <span class="card"><svg class="ic" aria-hidden="true" style="color:var(--or-txt)"><use href="#i-layout"/></svg>Maze <small>protótipos</small></span>
+    <span class="card"><svg class="ic" aria-hidden="true" style="color:var(--or-txt)"><use href="#i-video"/></svg>Lookback <small>sessões moderadas</small></span>
+    <span class="card"><svg class="ic" aria-hidden="true" style="color:var(--or-txt)"><use href="#i-fire"/></svg>Hotjar <small>mapas de calor</small></span></p>
+</section>
+
+<!-- ═════════════ 18 · Para levar ═════════════ -->
+<section class="slide dk" id="s18" data-sec="Para levar" data-who="Vitor" data-title="A automação pega a regressão. O usuário pega a confusão."
+ data-cable="M-140 860 C 400 1000, 900 980, 1300 760 S 1900 360, 2080 300"
+ data-notes="Conclusão. Leia a frase com calma e faça uma pausa antes do próximo slide.">
+  <h1 aria-label="A automação pega a regressão. O usuário pega a confusão.">
+    <span class="ln"><span class="lw" style="--j:0">A automação pega</span></span><span class="ln"><span class="lw" style="--j:1">a regressão.</span></span>
+    <span class="ln b"><span class="lw" style="--j:4">O usuário pega</span></span><span class="ln b"><span class="lw" style="--j:5">a confusão.</span></span>
+  </h1>
+  <p class="lead a" style="--i:8">Testes de UI e de UX não competem: um garante que a tela funciona, o outro que ela faz sentido para quem usa.</p>
+</section>
+
+<!-- ═════════════ 19 · Referências ═════════════ -->
+<section class="slide lt" id="s19" data-sec="Referências" data-who="Vitor" data-title="Para se aprofundar"
+ data-notes="Referências. Myers cobre a parte de teste de software (a 3ª edição tem um capítulo sobre teste de usabilidade); Krug cobre usabilidade. Confiram as edições que a biblioteca da faculdade tem e ajustem os dados se necessário.">
+  <h1 class="title" data-split="Para se aprofundar"></h1>
+  <ol>
+    <li class="card a fr" style="--i:1"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span><span><small>Livro</small><br>MYERS, G. J.; SANDLER, C.; BADGETT, T. <b>The Art of Software Testing</b>. 3. ed. Hoboken: Wiley, 2011.</span></li>
+    <li class="card a fr" style="--i:2"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span><span><small>Livro</small><br>KRUG, S. <b>Não me faça pensar</b>: uma abordagem de bom senso à usabilidade na web e mobile. 3. ed. Rio de Janeiro: Alta Books, 2014.</span></li>
+    <li class="card a fr" style="--i:3"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span><span><small>Livro</small><br>NIELSEN, J. <b>Usability Engineering</b>. San Francisco: Morgan Kaufmann, 1993.</span></li>
+    <li class="card a fr" style="--i:4"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span><span><small>Livro</small><br>RUBIN, J.; CHISNELL, D. <b>Handbook of Usability Testing</b>. 2. ed. Indianapolis: Wiley, 2008.</span></li>
+    <li class="card a fr" style="--i:5"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg></span><span><small>Norma</small><br>ISO 9241-11:2018. <b>Ergonomics of human-system interaction</b>: Part 11: Usability: definitions and concepts.</span></li>
+    <li class="card a fr" style="--i:6"><span class="well"><svg class="ic" aria-hidden="true"><use href="#i-link"/></svg></span><span><small>Documentação</small><br>STORYBOOK. <b>Writing tests</b>. Documentação oficial. Disponível em: storybook.js.org/docs/writing-tests.</span></li>
+  </ol>
+</section>
+
+<!-- ═════════════ 20 · Perguntas ═════════════ -->
+<section class="slide lt" id="s20" data-sec="Encerramento" data-who="Todos" data-title="Perguntas?"
+ data-orbs="1500 160 520 b;1860 860 420"
+ data-notes="Encerramento. Todos voltam à frente para responder perguntas.">
+  <p class="k2 a">Obrigado!</p>
+  <h1 class="giant ln" aria-label="Perguntas?"><span class="lw">Perguntas?</span></h1>
+  <p class="lead a" style="--i:2">Testes de UI e UX: do pixel ao usuário.</p>
+  <p class="by a" style="--i:4"><span class="card">Ruan</span><span class="card">Pedro</span><span class="card">Bruno</span><span class="card">Vitor</span></p>
+  <div class="sum">
+    <div class="card glass a fr" style="--i:3"><span class="chk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><div><h2>Teste de UI</h2><p>A tela funciona como especificado</p></div></div>
+    <div class="card glass a fr" style="--i:5"><span class="chk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><div><h2>Teste de UX</h2><p>Faz sentido para quem usa</p></div></div>
+    <div class="card glass a fr" style="--i:7"><span class="chk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><div><h2>Os dois juntos</h2><p>Do pixel ao usuário</p></div></div>
+  </div>
+</section>
+
+</div><!-- /wall -->
+
+<!-- ═════════════ Interface ═════════════ -->
+<div class="ui">
+  <button class="edge l" id="eprev" aria-label="Slide anterior"><span><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></span></button>
+  <button class="edge r" id="enext" aria-label="Próximo slide"><span><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></button>
+  <div id="bar"><i></i></div>
+  <nav id="dock" aria-label="Controles da apresentação">
+    <button data-cmd="prev" data-tip="Anterior ←" aria-label="Anterior"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="pos" id="pos">1 / 19</div>
+    <button data-cmd="next" data-tip="Próximo →" aria-label="Próximo"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <span class="sep"></span>
+    <button data-cmd="overview" data-tip="Parede de slides O" aria-label="Visão geral"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7" height="6" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="6" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="6" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="6" rx="1.5"/></svg></button>
+    <button data-cmd="notes" data-tip="Notas N" aria-label="Notas do apresentador"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3.5h9l4 4v13H6z"/><path d="M9 12h7M9 16h5"/></svg></button>
+    <button data-cmd="laser" data-tip="Laser L" aria-label="Ponteiro laser"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></button>
+    <button data-cmd="palette" data-tip="Comandos K" aria-label="Paleta de comandos"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 8l4 4-4 4M12 17h7"/></svg></button>
+    <span class="sep"></span>
+    <button data-cmd="frame" data-tip="Moldura M" aria-label="Alternar moldura"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="3"/><rect x="7" y="9" width="10" height="6" rx="1"/></svg></button>
+    <button data-cmd="pdf" data-tip="Exportar PDF P" aria-label="Exportar PDF"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg></button>
+    <button data-cmd="fullscreen" data-tip="Tela cheia F" aria-label="Tela cheia"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </nav>
+  <aside id="notes" aria-label="Notas do apresentador">
+    <div><p class="nh" id="nh"></p><p id="np"></p><p class="nx" id="nn"></p></div>
+    <div class="tm"><small>Tempo</small><span id="tm">00:00</span></div>
+  </aside>
+  <div id="pal" role="dialog" aria-label="Comandos"><div class="box">
+    <input id="pq" placeholder="Digite um comando ou o nome de um slide…" autocomplete="off" spellcheck="false">
+    <ul id="pl"></ul>
+    <div class="foot2"><span>↑↓ navegar</span><span>↵ executar</span><span>esc fechar</span></div>
+  </div></div>
+  <div id="help" role="dialog" aria-label="Atalhos"><div class="box">
+    <h2>Atalhos</h2>
+    <dl>
+      <div>Próximo / revelar <span><kbd>→</kbd><kbd>Espaço</kbd></span></div>
+      <div>Anterior <span><kbd>←</kbd><kbd>⌫</kbd></span></div>
+      <div>Pular passos <span><kbd>⇧</kbd><kbd>→ ←</kbd></span></div>
+      <div>Primeiro / último <span><kbd>Home</kbd><kbd>End</kbd></span></div>
+      <div>Ir para o slide <span><kbd>12</kbd><kbd>↵</kbd></span></div>
+      <div>Comandos <span><kbd>K</kbd><kbd>Ctrl K</kbd></span></div>
+      <div>Parede de slides <span><kbd>O</kbd></span></div>
+      <div>Moldura / tela inteira <span><kbd>M</kbd></span></div>
+      <div>Notas e cronômetro <span><kbd>N</kbd></span></div>
+      <div>Zerar cronômetro <span><kbd>T</kbd></span></div>
+      <div>Ponteiro laser <span><kbd>L</kbd></span></div>
+      <div>Tela preta <span><kbd>B</kbd></span></div>
+      <div>Tela cheia <span><kbd>F</kbd></span></div>
+      <div>Exportar PDF <span><kbd>P</kbd></span></div>
+    </dl>
+  </div></div>
+  <div id="toast" role="status"></div>
+  <div id="blank"></div>
+  <div id="laser"></div>
+  <div id="live" class="sr" aria-live="polite"></div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const root = document.documentElement, wall = $('#wall');
+  root.classList.add('js');
+  const slides = $$('.slide'), N = slides.length;
+  const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pad2 = n => String(n).padStart(2, '0');
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  /* ── destaque de sintaxe (leve) ── */
+  const KW = new Set('import export from const let return new if else async await function'.split(' '));
+  const TOK = /(\/\/.*|\/\*.*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+(?:\.\d+)?\b)|(\b[A-Za-z_$][\w$]*\b)/g;
+  function highlight(src) {
+    let out = '', last = 0, m;
+    TOK.lastIndex = 0;
+    while ((m = TOK.exec(src))) {
+      out += esc(src.slice(last, m.index)); last = TOK.lastIndex;
+      const t = m[0];
+      if (m[1]) out += `<span class="c">${esc(t)}</span>`;
+      else if (m[2]) out += `<span class="s">${esc(t)}</span>`;
+      else if (m[3]) out += `<span class="n">${t}</span>`;
+      else if (KW.has(t)) out += `<span class="k">${t}</span>`;
+      else if (/^[A-Z]/.test(t)) out += `<span class="t">${t}</span>`;
+      else out += t;
+    }
+    return out + esc(src.slice(last));
+  }
+  $$('pre[data-lang]').forEach(p => { p.innerHTML = highlight(p.textContent); });
+
+  /* ── montagem ── */
+  const LOGO = `<svg viewBox="0 0 44 36" aria-hidden="true"><rect x="2" y="3" width="32" height="22" rx="7" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M8 14.5l4 4 7.5-8" fill="none" stroke="#ff4785" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 16l15 8.4-6.6 1.8 4 7.6-3.1 1.7-4-7.6-5.2 4.6z" fill="currentColor" stroke="var(--bg)" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+  $$('[data-split]').forEach(h => {
+    h.innerHTML = h.dataset.split.split('|').map((l, j) => `<span class="ln"><span class="lw" style="--j:${j}">${esc(l)}</span></span>`).join('');
+    h.setAttribute('aria-label', h.dataset.split.replace(/\|/g, ' '));
+  });
+  slides.forEach((s, k) => {
+    s.insertAdjacentHTML('afterbegin', `<header class="hdr"><span class="logo">${LOGO}Testes de UI e UX</span><span class="yr">2026</span></header>`);
+    s.insertAdjacentHTML('beforeend', `<footer class="ftr"><span>${s.dataset.sec}</span><span>Engenharia de Software</span><span>${s.dataset.who}</span><span class="pg">${pad2(k + 1)}</span></footer>`);
+    /* fita de gradiente rosa → azul nos slides escuros */
+    if (s.dataset.cable) {
+      const id = 'cg' + k;
+      s.insertAdjacentHTML('afterbegin', `<svg class="cable" viewBox="0 0 1920 1080" aria-hidden="true">
+        <defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="1080" x2="1920" y2="0"><stop offset="0" stop-color="#ff4785"/><stop offset=".5" stop-color="#c770e0"/><stop offset="1" stop-color="#1ea7fd"/></linearGradient></defs>
+        <path class="glow draw" pathLength="1" d="${s.dataset.cable}" fill="none" stroke="url(#${id})" stroke-width="230" stroke-linecap="round" opacity=".55"/>
+        <path class="core draw" pathLength="1" d="${s.dataset.cable}" fill="none" stroke="url(#${id})" stroke-width="54" stroke-linecap="round" opacity=".7"/>
+      </svg>`);
+    }
+    /* data-orbs="x y tamanho[ b]; ..." */
+    if (s.dataset.orbs) s.insertAdjacentHTML('afterbegin', s.dataset.orbs.split(';').map(o => {
+      const [x, y, r, b] = o.trim().split(/\s+/);
+      return `<span class="orb${b ? ' b' : ''}" aria-hidden="true" style="left:${x - r / 2}px;top:${y - r / 2}px;width:${r}px;height:${r}px"></span>`;
+    }).join(''));
+    $$('.a', s).forEach((el, j) => { if (!el.style.getPropertyValue('--i')) el.style.setProperty('--i', j); });
+    const f = document.createElement('div'); f.className = 'frame'; f.dataset.n = pad2(k + 1);
+    s.parentNode.insertBefore(f, s); f.appendChild(s);
+    s.setAttribute('aria-label', `Slide ${k + 1} de ${N}: ${s.dataset.title}`);
+    s.setAttribute('role', 'group'); s.setAttribute('aria-roledescription', 'slide');
+  });
+  const frames = $$('.frame');
+
+  /* ── canvas: frames em serpentina, ligados como num fluxo de protótipo ── */
+  const COLS = 4, GX = 420, GY = 380, W = COLS * 1920 + (COLS - 1) * GX, ROWS = Math.ceil(N / COLS), H = ROWS * 1080 + (ROWS - 1) * GY + 120;
+  const pos = frames.map((f, i) => {
+    const r = Math.floor(i / COLS), c = r % 2 ? COLS - 1 - (i % COLS) : i % COLS;
+    const p = { x: c * (1920 + GX), y: 120 + r * (1080 + GY) }; f.style.left = p.x + 'px'; f.style.top = p.y + 'px'; return p;
+  });
+  wall.style.width = W + 'px'; wall.style.height = H + 'px';
+  const links = [];
+  (() => {
+    const svg = $('#cables'); svg.setAttribute('width', W); svg.setAttribute('height', H);
+    const NS = 'http://www.w3.org/2000/svg';
+    let out = `<defs><linearGradient id="flowGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff4785"/><stop offset=".5" stop-color="#c770e0"/><stop offset="1" stop-color="#1ea7fd"/></linearGradient></defs>`;
+    const ends = [];
+    for (let i = 0; i < N - 1; i++) {
+      const a = pos[i], b = pos[i + 1];
+      let d, s, e, ang;
+      if (b.y === a.y) {
+        const fwd = b.x > a.x, ax = fwd ? a.x + 1920 : a.x, bx = fwd ? b.x : b.x + 1920, ay = a.y + 540, by = b.y + 540, k = (bx - ax) / 2;
+        s = [ax, ay]; e = [bx, by]; ang = fwd ? 0 : 180;
+        d = `M${ax} ${ay} C${ax + k} ${ay - 160}, ${bx - k} ${by + 160}, ${bx} ${by}`;
+      } else {
+        const ax = a.x + 1500, ay = a.y + 1080, bx = b.x + 1500, by = b.y;
+        s = [ax, ay]; e = [bx, by]; ang = 90;
+        d = `M${ax} ${ay} C${ax + 260} ${ay + GY * .6}, ${bx - 260} ${by - GY * .6}, ${bx} ${by}`;
+      }
+      out += `<path class="link" d="${d}"/><path class="lit" id="lk${i}" pathLength="1" d="${d}"/>`;
+      ends.push({ s, e, ang });
+    }
+    ends.forEach((p, i) => { out += `<circle class="node" id="nd${i}" cx="${p.s[0]}" cy="${p.s[1]}" r="18"/><path class="tip" id="tp${i}" d="M0 -22 L30 0 L0 22 Z" transform="translate(${p.e[0]} ${p.e[1]}) rotate(${p.ang}) translate(-30 0)"/>`; });
+    out += `<circle id="flowRip" r="40"/><g id="flowCur"><path class="c-body" d="M6 4l34 19-15 4 9 17-7 4-9-17-11 10z"/></g>`;
+    svg.innerHTML = out;
+    for (let i = 0; i < N - 1; i++) links.push({ lit: $('#lk' + i), node: $('#nd' + i), tip: $('#tp' + i) });
+  })();
+  const markLinks = upto => links.forEach((l, i) => { const on = i < upto; l.lit.classList.toggle('done', on); l.node.classList.toggle('done', on); l.tip.classList.toggle('done', on); });
+
+  /* cursor que percorre o conector até o próximo frame e "clica" nele */
+  const fcur = $('#flowCur'), frip = $('#flowRip');
+  let walk = 0;
+  function travel(from, to, dur) {
+    cancelAnimationFrame(walk);
+    if (reduce() || dur <= 0 || Math.abs(to - from) !== 1) { markLinks(to); fcur.classList.remove('on'); return; }
+    const i = Math.min(from, to), lk = links[i].lit, len = lk.getTotalLength(), fwd = to > from, t0 = performance.now();
+    markLinks(Math.min(from, to));
+    lk.style.transition = 'none';
+    fcur.classList.add('on');
+    const tick = now => {
+      let t = Math.min(1, (now - t0) / (dur * .82));
+      const e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const u = fwd ? e : 1 - e, p = lk.getPointAtLength(u * len);
+      const z = new DOMMatrix(getComputedStyle(wall).transform).a || 1;
+      fcur.setAttribute('transform', `translate(${p.x} ${p.y}) scale(${Math.min(9, 1.1 / z)}) translate(-6 -4)`);
+      lk.style.strokeDashoffset = 1 - u;
+      if (t < 1) walk = requestAnimationFrame(tick);
+      else {
+        lk.style.strokeDashoffset = ''; lk.style.transition = ''; markLinks(to);
+        frip.setAttribute('cx', p.x); frip.setAttribute('cy', p.y);
+        frip.animate([{ opacity: .9, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(2.4)' }], { duration: 600, easing: 'cubic-bezier(.16,1,.3,1)' });
+        frip.style.transformOrigin = `${p.x}px ${p.y}px`; frip.style.transformBox = 'view-box';
+        fcur.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, delay: 250, fill: 'forwards' }).finished.then(() => { fcur.classList.remove('on'); fcur.getAnimations().forEach(a => a.cancel()); });
+      }
+    };
+    walk = requestAnimationFrame(tick);
+  }
+
+  /* ── câmera ── */
+  let cam = { x: 0, y: 0, z: 1 }, flight = null, ov = false;
+  const bleed = () => root.classList.contains('bleed');
+  const T = c => `translate(${c.x}px,${c.y}px) scale(${c.z})`;
+  const camFor = i => { const z = Math.min(innerWidth / 1920, innerHeight / 1080) * (bleed() ? 1 : .94); return { z, x: innerWidth / 2 - (pos[i].x + 960) * z, y: innerHeight / 2 - (pos[i].y + 540) * z }; };
+  const camAll = () => { const z = Math.min(innerWidth / W, (innerHeight - 90) / H) * .94; return { z, x: (innerWidth - W * z) / 2, y: (innerHeight - 90 - H * z) / 2 + 20 }; };
+  const setCam = c => { cam = c; wall.style.transform = T(c); };
+  function fly(to, { dur = 1050, swoop = true } = {}) {
+    if (flight) { flight.cancel(); flight = null; }
+    const from = cam;
+    if (reduce() || dur === 0) { setCam(to); return; }
+    const kf = [{ transform: T(from), easing: 'cubic-bezier(.55,0,.35,1)' }];
+    if (swoop) {
+      const c1 = { x: (innerWidth / 2 - from.x) / from.z, y: (innerHeight / 2 - from.y) / from.z }, c2 = { x: (innerWidth / 2 - to.x) / to.z, y: (innerHeight / 2 - to.y) / to.z };
+      const dist = Math.hypot(c2.x - c1.x, c2.y - c1.y);
+      const zm = Math.min(from.z, to.z) * Math.max(.3, .78 - dist / 9000);
+      const mc = { x: (c1.x + c2.x) / 2, y: (c1.y + c2.y) / 2 };
+      kf.push({ transform: T({ z: zm, x: innerWidth / 2 - mc.x * zm, y: innerHeight / 2 - mc.y * zm }), offset: .5, easing: 'cubic-bezier(.45,0,.25,1)' });
+      dur += Math.min(500, dist / 12);
+    }
+    kf.push({ transform: T(to) });
+    setCam(to);
+    wall.classList.add('flying');
+    flight = wall.animate(kf, { duration: dur });
+    flight.finished.then(() => { wall.classList.remove('flying'); flight = null; }).catch(() => {});
+    return dur;
+  }
+  addEventListener('resize', () => setCam(ov ? camAll() : camFor(cur)));
+
+  /* ── estado ── */
+  let cur = -1, step = 0;
+  const stepsOf = s => Math.max(0, ...$$('[data-step]', s).map(e => +e.dataset.step));
+  const setStep = n => {
+    step = n;
+    $$('[data-step]', slides[cur]).forEach(e => { e.classList.toggle('on', +e.dataset.step <= n); e.classList.toggle('now', +e.dataset.step === n); });
+    progress();
+  };
+  function progress() {
+    const m = stepsOf(slides[cur]);
+    $('#bar i').style.transform = `scaleX(${(cur + (m ? step / (m + 1) : 0)) / (N - 1)})`;
+    $('#pos').textContent = `${cur + 1} / ${N}`;
+  }
+
+  function go(to, o = {}) {
+    to = Math.max(0, Math.min(N - 1, to));
+    if (to === cur && !o.force && !ov) return;
+    const back = cur >= 0 && to < cur && !ov;
+    const inn = slides[to];
+    const wasOv = ov; ov = false; document.body.classList.remove('ov');
+    const from = cur;
+    const dur = o.instant ? 0 : fly(camFor(to), { swoop: !wasOv }) || 0;
+    if (!wasOv && from >= 0) travel(from, to, dur); else markLinks(to);
+    inn.classList.remove('enter');
+    inn.style.setProperty('--b', Math.max(0, dur - 420) + 'ms');
+    void inn.offsetWidth;
+    if (!back) inn.classList.add('enter');
+    cur = to;
+    $$('[data-step]', inn).forEach(e => { e.classList.toggle('on', back); e.classList.remove('now'); });
+    step = back ? stepsOf(inn) : 0;
+    if (o.step != null) setStep(Math.min(o.step, stepsOf(inn))); else progress();
+    history.replaceState(null, '', '#' + (to + 1));
+    $('#live').textContent = `Slide ${to + 1} de ${N}: ${inn.dataset.title}`;
+    frames.forEach((f, i) => f.classList.toggle('cur', i === to));
+    updateNotes();
+  }
+  const next = skip => (!skip && step < stepsOf(slides[cur])) ? setStep(step + 1) : go(cur + 1);
+  const prev = skip => (!skip && step > 0) ? setStep(step - 1) : go(cur - 1);
+
+  /* ── parede de slides (visão geral) ── */
+  function overview(on = !ov) {
+    if (!on) return go(cur, { force: true });
+    ov = true; document.body.classList.add('ov');
+    fly(camAll(), { swoop: false, dur: 900 });
+  }
+  frames.forEach((f, i) => f.addEventListener('click', () => { if (ov) go(i, { force: true }); }));
+
+  /* ── notas + cronômetro ── */
+  let t0 = Date.now();
+  function updateNotes() {
+    const s = slides[cur];
+    $('#nh').textContent = `Slide ${cur + 1} de ${N}, ${s.dataset.who}: ${s.dataset.title}`;
+    $('#np').textContent = s.dataset.notes || '';
+    $('#nn').textContent = slides[cur + 1] ? `Próximo: ${slides[cur + 1].dataset.title}` : 'Último slide';
+  }
+  setInterval(() => { const t = Math.floor((Date.now() - t0) / 1000); $('#tm').textContent = pad2(Math.floor(t / 60)) + ':' + pad2(t % 60); }, 500);
+
+  let tt; const toast = m => { const e = $('#toast'); e.textContent = m; e.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => e.classList.remove('on'), 2800); };
+
+  /* ── comandos ── */
+  const toggleBody = (c, on, off) => toast(document.body.classList.toggle(c) ? on : off);
+  function exportPDF() {
+    toast('Na janela de impressão: “Salvar como PDF”, margens “Nenhuma” e “Gráficos de plano de fundo” ligado.');
+    root.classList.add('pdf');
+    setTimeout(() => print(), 450);
+  }
+  addEventListener('beforeprint', () => root.classList.add('pdf'));
+  addEventListener('afterprint', () => { if (!new URLSearchParams(location.search).has('pdf')) { root.classList.remove('pdf'); setCam(ov ? camAll() : camFor(cur)); } });
+  const fullscreen = () => document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen?.();
+  const blank = () => $('#blank').classList.toggle('on');
+  const frameMode = () => { root.classList.toggle('bleed'); try { localStorage.setItem('uiux-bleed', bleed() ? '1' : '0'); } catch (e) {} if (!ov) fly(camFor(cur), { swoop: false, dur: 500 }); toast(bleed() ? 'Tela inteira' : 'Moldura'); };
+
+  const CMDS = [
+    { id: 'next', t: 'Próximo', k: '→', run: () => next() },
+    { id: 'prev', t: 'Anterior', k: '←', run: () => prev() },
+    { id: 'first', t: 'Primeiro slide', k: 'Home', run: () => go(0) },
+    { id: 'last', t: 'Último slide', k: 'End', run: () => go(N - 1) },
+    { id: 'overview', t: 'Parede de slides (visão geral)', k: 'O', run: () => overview() },
+    { id: 'frame', t: 'Alternar moldura / tela inteira', k: 'M', run: frameMode },
+    { id: 'notes', t: 'Notas do apresentador e cronômetro', k: 'N', run: () => toggleBody('shownotes', 'Notas visíveis', 'Notas ocultas') },
+    { id: 'timer', t: 'Zerar cronômetro', k: 'T', run: () => { t0 = Date.now(); toast('Cronômetro zerado'); } },
+    { id: 'laser', t: 'Ponteiro laser', k: 'L', run: () => toggleBody('laser', 'Laser ligado', 'Laser desligado') },
+    { id: 'blank', t: 'Tela preta', k: 'B', run: blank },
+    { id: 'fullscreen', t: 'Tela cheia', k: 'F', run: fullscreen },
+    { id: 'pdf', t: 'Exportar para PDF', k: 'P', run: exportPDF },
+    { id: 'help', t: 'Atalhos de teclado', k: '?', run: () => $('#help').classList.add('open') },
+    { id: 'palette', t: 'Paleta de comandos', k: 'K', run: () => openPalette() },
+  ];
+  const cmd = id => CMDS.find(c => c.id === id).run();
+  $$('[data-cmd]').forEach(b => b.addEventListener('click', () => { cmd(b.dataset.cmd); b.blur(); }));
+  $('#eprev').onclick = () => prev(); $('#enext').onclick = () => next();
+  $$('[data-goto]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); go(+a.dataset.goto - 1); }));
+
+  /* ── paleta ── */
+  let sel = 0, items = [];
+  const pal = $('#pal'), pq = $('#pq'), pl = $('#pl');
+  function renderPalette() {
+    const q = pq.value.trim().toLowerCase();
+    const all = [
+      ...CMDS.map(c => ({ label: c.t, key: c.k, run: c.run, hay: c.t.toLowerCase() })),
+      ...slides.map((s, i) => ({ label: `Ir para ${pad2(i + 1)}: ${s.dataset.title}`, key: '', run: () => go(i), hay: `${i + 1} ${pad2(i + 1)} ir para slide ${s.dataset.title} ${s.dataset.sec} ${s.dataset.who}`.toLowerCase() })),
+    ];
+    items = q ? all.filter(i => q.split(/\s+/).every(w => i.hay.includes(w))) : all;
+    sel = Math.min(sel, Math.max(0, items.length - 1));
+    pl.innerHTML = items.length ? items.map((i, k) => `<li class="${k === sel ? 'sel' : ''}" data-k="${k}"><span>${esc(i.label)}</span>${i.key ? `<kbd>${esc(i.key)}</kbd>` : ''}</li>`).join('') : '<div class="empty">Nenhum comando encontrado.</div>';
+    $('.sel', pl)?.scrollIntoView({ block: 'nearest' });
+  }
+  function openPalette() { pal.classList.add('open'); pq.value = ''; sel = 0; renderPalette(); pq.focus(); }
+  function closePalette() { pal.classList.remove('open'); pq.blur(); }
+  function runSel() { const i = items[sel]; if (!i) return; closePalette(); i.run(); }
+  pq.addEventListener('input', () => { sel = 0; renderPalette(); });
+  pl.addEventListener('click', e => { const li = e.target.closest('li'); if (li) { sel = +li.dataset.k; runSel(); } });
+  pal.addEventListener('mousedown', e => { if (e.target === pal) closePalette(); });
+  $('#help').addEventListener('mousedown', e => { if (e.target.id === 'help') $('#help').classList.remove('open'); });
+
+  /* ── teclado ── */
+  let digits = '', dt;
+  addEventListener('keydown', e => {
+    if (pal.classList.contains('open')) {
+      if (e.key === 'Escape') closePalette();
+      else if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); renderPalette(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); renderPalette(); }
+      else if (e.key === 'Enter') { e.preventDefault(); runSel(); }
+      return;
+    }
+    const k = e.key;
+    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'k') { e.preventDefault(); return openPalette(); }
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (k === 'Escape') {
+      if ($('#help').classList.contains('open')) return $('#help').classList.remove('open');
+      if ($('#blank').classList.contains('on')) return blank();
+      if (ov) return overview(false);
+      if (document.body.classList.contains('laser')) return cmd('laser');
+      return;
+    }
+    if (/^\d$/.test(k)) { digits += k; toast('Ir para o slide ' + digits + '  ↵'); clearTimeout(dt); dt = setTimeout(() => { digits = ''; }, 1600); return; }
+    if (k === 'Enter' && digits) { go(+digits - 1); digits = ''; return; }
+    const sk = e.shiftKey;
+    switch (k) {
+      case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ': case 'Enter': e.preventDefault(); ov ? go(cur, { force: true }) : next(sk); break;
+      case 'ArrowLeft': case 'ArrowUp': case 'PageUp': case 'Backspace': e.preventDefault(); if (!ov) prev(sk); break;
+      case 'Home': go(0); break;
+      case 'End': go(N - 1); break;
+      case 'o': case 'O': case 'Tab': e.preventDefault(); overview(); break;
+      case 'm': case 'M': frameMode(); break;
+      case 'n': case 'N': cmd('notes'); break;
+      case 't': case 'T': cmd('timer'); break;
+      case 'l': case 'L': cmd('laser'); break;
+      case 'b': case 'B': case '.': blank(); break;
+      case 'f': case 'F': fullscreen(); break;
+      case 'p': case 'P': exportPDF(); break;
+      case 'k': case 'K': case '/': e.preventDefault(); openPalette(); break;
+      case '?': $('#help').classList.add('open'); break;
+    }
+  });
+
+  /* ── ponteiro, ociosidade, toque ── */
+  const laser = $('#laser'); let idleT;
+  addEventListener('mousemove', e => {
+    laser.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+    root.classList.remove('idle'); clearTimeout(idleT);
+    idleT = setTimeout(() => { if (!ov && !pal.classList.contains('open')) root.classList.add('idle'); }, 2800);
+  });
+  idleT = setTimeout(() => root.classList.add('idle'), 3200);
+  let tx = null;
+  addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => { if (tx == null || ov) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 60) dx < 0 ? next() : prev(); tx = null; });
+  addEventListener('hashchange', () => { const n = parseHash(); if (n && n.i !== cur) go(n.i); });
+
+  /* ── início: #6 ou #6.3 (slide 6, passo 3) · ?pdf para o layout de impressão ── */
+  function parseHash() {
+    const m = location.hash.match(/^#(\d+)(?:\.(\d+))?$/);
+    return m ? { i: Math.max(0, Math.min(N - 1, +m[1] - 1)), s: m[2] ? +m[2] : 0 } : null;
+  }
+  try { if (localStorage.getItem('uiux-bleed') === '1') root.classList.add('bleed'); } catch (e) {}
+  if (new URLSearchParams(location.search).has('pdf')) root.classList.add('pdf');
+  const h = parseHash();
+  setCam(camFor(h ? h.i : 0));
+  go(h ? h.i : 0, { instant: true, force: true, step: h ? h.s : 0 });
+  window.__deck = { go, next, prev, overview, get cur() { return cur; } };
+})();
+</script>
+</body>
+</html>
