@@ -1,0 +1,21 @@
+{
+  "inicio": -0.006,
+  "passo1": 1.195,
+  "passo2": 14.643,
+  "play-inicio": 21.356,
+  "play-clique": 23.721,
+  "play-expect": 26.12,
+  "passo3": 28.521,
+  "cor-ruim": 33.506,
+  "violacao": 37.965,
+  "cor-corrigida": 43.139,
+  "passo4": 46.94,
+  "rodando1": 48.329,
+  "raio": 52.556,
+  "rodando2": 56.734,
+  "falhou": 60.23,
+  "diff": 63.854,
+  "aceitar": 70.857,
+  "rodando3": 81.788,
+  "fim": 86.132
+}

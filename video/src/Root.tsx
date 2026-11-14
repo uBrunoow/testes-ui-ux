@@ -1,13 +1,6 @@
 import {Composition} from 'remotion';
-import {DemoStorybook, DURATION, FPS} from './DemoStorybook';
+import {DemoReal, DURATION, FPS} from './DemoReal';
 
 export const Root: React.FC = () => (
-  <Composition
-    id="DemoStorybook"
-    component={DemoStorybook}
-    durationInFrames={DURATION}
-    fps={FPS}
-    width={1920}
-    height={1080}
-  />
+  <Composition id="DemoStorybook" component={DemoReal} durationInFrames={DURATION} fps={FPS} width={1920} height={1080} />
 );
