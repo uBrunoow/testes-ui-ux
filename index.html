@@ -431,12 +431,27 @@ body.ov .frame.cur{box-shadow:0 0 0 10px var(--ink)}
 #s15 .term li.on .s svg{opacity:1}
 #s15 .term li{opacity:.55;transition:opacity .4s}
 #s15 .term li.on{opacity:1}
-#s15 .lim{position:absolute;left:1200px;top:300px;width:600px;padding:40px 44px;border-radius:34px}
-#s15 .lim .big{font:600 168px/1 var(--sans);letter-spacing:-.06em}
-#s15 .lim p{margin-top:18px;font:400 29px/1.38 var(--sans)}
+#s15 .lim{position:absolute;left:1200px;top:664px;width:600px;padding:28px 34px;border-radius:30px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:26px;align-items:center}
+#s15 .lim .big{font:600 104px/1 var(--sans);letter-spacing:-.06em}
+#s15 .lim p{font:400 23px/1.36 var(--sans)}
 #s15 .lim p b{font-weight:600}
-#s15 .planb{position:absolute;left:1200px;top:770px;width:600px;display:flex;gap:20px;align-items:center;padding:24px 30px 24px 22px;border-radius:30px;font:400 26px/1.35 var(--sans);color:var(--mut)}
-#s15 .planb b{color:var(--fg);font-weight:600}
+/* vídeo da demo (Plano B): miniatura no slide, amplia para o slide inteiro */
+#s15 .vid{position:absolute;left:1200px;top:300px;width:600px;height:338px;margin:0;z-index:8;border-radius:28px;overflow:hidden;background:var(--ink);
+  box-shadow:0 0 0 1.5px var(--glass-edge),var(--glass-shadow),0 30px 60px -34px color-mix(in srgb,var(--ink) 55%,transparent);
+  transition:left .5s var(--ease-out),top .5s var(--ease-out),width .5s var(--ease-out),height .5s var(--ease-out),border-radius .5s var(--ease-out)}
+#s15 .vid video{display:block;width:100%;height:100%;object-fit:cover;background:var(--ink)}
+#s15 .vid.big{left:0;top:0;width:1920px;height:1080px;border-radius:0;z-index:30}
+#s15 .vid .tag{position:absolute;left:16px;top:16px;display:flex;align-items:center;gap:10px;padding:8px 16px 8px 10px;border-radius:999px;pointer-events:none;
+  background:color-mix(in srgb,var(--ink) 78%,transparent);color:var(--paper);font:500 19px var(--sans);transition:opacity .3s}
+#s15 .vid .tag .ic{width:22px;height:22px;color:var(--or-2)}
+#s15 .vid.playing .tag,#s15 .vid.big .tag{opacity:0}
+#s15 .vid .vbig{position:absolute;right:16px;top:16px;width:52px;height:52px;border:0;border-radius:16px;display:grid;place-items:center;cursor:pointer;
+  background:color-mix(in srgb,var(--ink) 70%,transparent);color:var(--paper);transition:background .2s,opacity .3s}
+#s15 .vid .vbig:hover{background:var(--or-txt)}
+#s15 .vid .vbig svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#s15 .vid .vbig .shrink,#s15 .vid.big .vbig .grow{display:none}
+#s15 .vid.big .vbig .shrink{display:block}
+#s15 .vid.big .vbig{width:64px;height:64px;right:28px;top:28px;border-radius:20px}
 
 /* ═════════════ 17 · Usabilidade ═════════════ */
 #s17 h1{position:absolute;left:120px;top:150px}
@@ -855,7 +870,7 @@ export const Enviar = {
 
 <!-- ═════════════ 15 · Roteiro da demo ═════════════ -->
 <section class="slide lt" id="s15" data-sec="Demonstração ao vivo" data-who="Bruno" data-title="Roteiro da demo"
- data-notes="Demo em quatro passos; cada avanço marca um passo como concluído. Deixe o Storybook já aberto e com o componente pronto antes de começar. No passo 3, use uma cor de texto com contraste baixo de propósito, mostre o alerta do painel de acessibilidade e corrija. Feche com o limite: a automação pega muita coisa, mas não substitui testar com pessoas reais. Isso leva ao bloco do Vitor.">
+ data-notes="Demo em quatro passos; cada avanço marca um passo como concluído. Deixe o Storybook já aberto e com o componente pronto antes de começar. No passo 3, use uma cor de texto com contraste baixo de propósito, mostre o alerta do painel de acessibilidade e corrija. Feche com o limite: a automação pega muita coisa, mas não substitui testar com pessoas reais. Isso leva ao bloco do Vitor. Plano B: se algo falhar ao vivo, toque o vídeo à direita (60 s, os mesmos quatro passos); o botão no canto amplia para o slide inteiro e Esc reduz.">
   <h1 class="title" data-split="Roteiro da demo"></h1>
   <div class="term a fl" style="--i:1">
     <div class="bar"><svg class="ic" aria-hidden="true"><use href="#i-term"/></svg>storybook dev, localhost:6006</div>
@@ -866,11 +881,15 @@ export const Enviar = {
       <li data-step="4"><span class="s"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4L18 8"/></svg></span><span class="n">04</span><span><b>Diff visual</b>Mudança de estilo detectada no Chromatic</span></li>
     </ol>
   </div>
-  <div class="lim hot-card a pp" style="--i:4">
+  <div class="lim hot-card a pp" style="--i:5">
     <p class="big">57%</p>
     <p><b>Limite: isso cobre UI.</b> O axe detecta em média até 57% dos problemas de WCAG.</p>
   </div>
-  <div class="planb card a fr" style="--i:6"><span class="well sm"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg></span><span><b>Plano B:</b> vídeo gravado da demo, caso algo falhe ao vivo.</span></div>
+  <figure class="vid a fr" style="--i:3">
+    <video src="videos/demo-storybook.mp4" poster="videos/demo-storybook-poster.jpg" preload="metadata" playsinline controls aria-label="Vídeo da demo no Storybook: interação, acessibilidade e diff visual"></video>
+    <span class="tag"><svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>Plano B: demo gravada</span>
+    <button class="vbig" type="button" aria-label="Ampliar vídeo"><svg class="grow" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg><svg class="shrink" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4l-6 6M14 5v5h5M4 20l6-6M10 19v-5H5"/></svg></button>
+  </figure>
 </section>
 
 <!-- ═════════════ 16 · Parte 04 ═════════════ -->
@@ -1335,6 +1354,22 @@ export const Enviar = {
   setCam(camFor(h ? h.i : 0));
   go(h ? h.i : 0, { instant: true, force: true, step: h ? h.s : 0 });
   window.__deck = { go, next, prev, overview, get cur() { return cur; } };
+})();
+</script>
+<script>
+/* vídeo da demo no slide 14: ampliar/reduzir, Esc fecha, pausa ao sair do slide */
+(() => {
+  const fig = document.querySelector('#s15 .vid'); if (!fig) return;
+  const v = fig.querySelector('video'), btn = fig.querySelector('.vbig');
+  const setBig = on => { fig.classList.toggle('big', on); btn.setAttribute('aria-label', on ? 'Reduzir vídeo' : 'Ampliar vídeo'); };
+  btn.addEventListener('click', e => { e.stopPropagation(); const on = !fig.classList.contains('big'); setBig(on); if (on && v.paused) v.play().catch(() => {}); btn.blur(); });
+  v.addEventListener('dblclick', e => { e.preventDefault(); btn.click(); });
+  v.addEventListener('focus', () => setTimeout(() => v.blur())); // setas e espaço continuam com a apresentação
+  v.addEventListener('play', () => fig.classList.add('playing'));
+  v.addEventListener('pause', () => fig.classList.remove('playing'));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && fig.classList.contains('big')) { e.stopImmediatePropagation(); e.preventDefault(); setBig(false); } }, true);
+  const frame = fig.closest('.frame');
+  if (frame) new MutationObserver(() => { if (!frame.classList.contains('cur')) { v.pause(); setBig(false); } }).observe(frame, { attributes: true, attributeFilter: ['class'] });
 })();
 </script>
 </body>
