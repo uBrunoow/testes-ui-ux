@@ -1,4 +1,5 @@
-.claude/
+.claude/*
+!.claude/skills/
 .impeccable/
 .vercel/
 node_modules/
